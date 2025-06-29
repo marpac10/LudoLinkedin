@@ -6,14 +6,26 @@ from statistics import mean
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler, CallbackContext
 from supabase import create_client
+import threading
+from flask import Flask, Response
+
+
 
 # 👉 Inserisci qui il tuo TOKEN
-TELEGRAM_BOT_TOKEN = '7749557927:AAEqGqcKa7Hd_Ow3WibkIUrz1bJUnvVHLZ0'
+#TELEGRAM_BOT_TOKEN = '7749557927:AAEqGqcKa7Hd_Ow3WibkIUrz1bJUnvVHLZ0'
 
 # 👉 Supabase credentials
-SUPABASE_URL = "https://kfyihmqughvjgdioyunu.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeWlobXF1Z2h2amdkaW95dW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4ODM2MzMsImV4cCI6MjA2NjQ1OTYzM30.QB-bdTWKchIJPQNQ119zx5Smc20YbUoArtFgWadeGqs"
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+#SUPABASE_URL = "https://kfyihmqughvjgdioyunu.supabase.co"
+#SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeWlobXF1Z2h2amdkaW95dW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4ODM2MzMsImV4cCI6MjA2NjQ1OTYzM30.QB-bdTWKchIJPQNQ119zx5Smc20YbUoArtFgWadeGqs"
+#supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+import os
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+
 
 classifica_pubblicata = False
 
@@ -237,12 +249,6 @@ def campionato_command(update: Update, context: CallbackContext):
         logging.error(f"Errore nel recupero classifica totale: {e}")
         update.message.reply_text("❌ Errore nel recupero della classifica totale.")
 
-    dp.add_handler(CallbackQueryHandler(mostra_classifica))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-
-    updater.start_polling()
-    print("🤖 Bot attivo. Premi Ctrl+C per fermarlo.")
-    updater.idle()
 
 def reset_classifica(update: Update, context: CallbackContext):
     try:
@@ -271,9 +277,6 @@ def is_orario_attivo():
 
 
 def main():
-    if not is_orario_attivo():
-        print("⏸ Bot spento: fuori orario 08:00–20:00.")
-        return
 
     updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
@@ -286,10 +289,48 @@ def main():
     dp.add_handler(CallbackQueryHandler(mostra_classifica))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    updater.start_polling()
+    updater.start_webhook(
+    listen="0.0.0.0",
+    port=8080,
+    url_path=TELEGRAM_BOT_TOKEN,
+    webhook_url=os.environ.get("RENDER_EXTERNAL_URL") + "/" + TELEGRAM_BOT_TOKEN,
+)
+
     print("🤖 Bot attivo.")
     updater.idle()
 
 
+webserver = Flask('')
+
+
+@webserver.route('/')
+@webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
+def webhook():
+    from telegram import Update
+    from telegram.ext import Dispatcher
+
+    update = Update.de_json(request.get_json(force=True), updater.bot)
+    dp = updater.dispatcher
+    dispatcher = Dispatcher(updater.bot, None, workers=0, use_context=True)
+    dispatcher.add_handler(CommandHandler("classifica", classifica_command))
+    dispatcher.add_handler(CommandHandler("pubblica", pubblica_classifica))
+    dispatcher.add_handler(CommandHandler("campionato", campionato_command))
+    dispatcher.add_handler(CommandHandler("reset", reset_classifica))
+    dispatcher.add_handler(CommandHandler("info", info_command))
+    dispatcher.add_handler(CallbackQueryHandler(mostra_classifica))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+
+    dispatcher.process_update(update)
+    return "OK"
+
+def home():
+    return Response("Bot attivo", status=200, mimetype='text/plain')
+
+
+def run_flask():
+    webserver.run(host='0.0.0.0', port=8080)
+
 if __name__ == '__main__':
     main()
+
+
