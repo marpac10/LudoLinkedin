@@ -17,7 +17,7 @@ from flask import Flask, Response
 # 👉 Supabase credentials
 #SUPABASE_URL = "https://kfyihmqughvjgdioyunu.supabase.co"
 #SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeWlobXF1Z2h2amdkaW95dW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4ODM2MzMsImV4cCI6MjA2NjQ1OTYzM30.QB-bdTWKchIJPQNQ119zx5Smc20YbUoArtFgWadeGqs"
-#supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 import os
 
@@ -25,7 +25,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
-
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 classifica_pubblicata = False
 
