@@ -8,6 +8,7 @@ from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, Callb
 from supabase import create_client
 import threading
 from flask import Flask, Response
+from functools import wraps
 
 
 
@@ -20,6 +21,10 @@ from flask import Flask, Response
 
 
 import os
+
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "2510")  
+ADMINS = ["mario"]  
+
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -45,6 +50,31 @@ def parse_message(text):
 
     return gioco, tempo
 
+
+def is_admin(update, context):
+    user_name = update.effective_user.first_name.lower()
+    # Verifica se utente è in lista admin
+    if user_name in ADMINS:
+        return True
+    # Verifica se password admin è passata come argomento al comando
+    if context.args and context.args[0] == ADMIN_PASSWORD:
+        return True
+    return False
+
+
+
+
+def admin_only(func):
+    @wraps(func)
+    def wrapper(update, context, *args, **kwargs):
+        if not is_admin(update, context):
+            update.message.reply_text("❌ Comando riservato agli admin. Usa /comando password_segreta")
+            return
+        return func(update, context, *args, **kwargs)
+    return wrapper
+
+
+
 def salva_su_supabase(utente, gioco, tempo):
     try:
         supabase.table("risultati_giornalieri").insert({
@@ -62,6 +92,8 @@ def handle_message(update, context):
     text = update.message.text
 
     oggi = datetime.now().date().isoformat()
+
+    # Controlla se la classifica è già pubblicata per oggi
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
         .eq("data", oggi)\
@@ -75,6 +107,19 @@ def handle_message(update, context):
     gioco, tempo = parse_message(text)
 
     if gioco and tempo:
+        # Controlla se l'utente ha già inviato un risultato per questo gioco oggi
+        existing = supabase.table("risultati_giornalieri")\
+            .select("id")\
+            .eq("utente", user)\
+            .eq("gioco", gioco)\
+            .gte("timestamp", oggi + "T00:00:00Z")\
+            .lte("timestamp", oggi + "T23:59:59Z")\
+            .execute().data
+
+        if existing:
+            update.message.reply_text(f"⚠️ Hai già inviato un risultato per {gioco} oggi.")
+            return
+
         successo = salva_su_supabase(user, gioco, tempo)
         if successo:
             update.message.reply_text(f"✅ Registrato: {gioco} in {tempo}, {user}!")
@@ -82,6 +127,7 @@ def handle_message(update, context):
             update.message.reply_text("❌ Errore nel salvataggio. Riprova più tardi.")
     else:
         update.message.reply_text("⚠️ Messaggio non valido. Scrivi il nome del gioco e il tempo (es: Queens 1:23)")
+
 
 def classifica_command(update: Update, context: CallbackContext):
     oggi = datetime.now().date().isoformat()
@@ -154,6 +200,7 @@ def mostra_classifica(update: Update, context: CallbackContext):
         logging.error(f"Errore lettura Supabase: {e}")
         query.edit_message_text("❌ Errore nel recupero classifica.")
 
+@admin_only
 def pubblica_classifica(update: Update, context: CallbackContext):
     global classifica_pubblicata
     oggi = datetime.now().date().isoformat()
@@ -261,7 +308,7 @@ def campionato_command(update: Update, context: CallbackContext):
         logging.error(f"Errore nel recupero classifica totale: {e}")
         update.message.reply_text("❌ Errore nel recupero della classifica totale.")
 
-
+@admin_only
 def reset_classifica(update: Update, context: CallbackContext):
     try:
         supabase.table("classifica_totale").delete().neq("utente", "").execute()
@@ -293,10 +340,12 @@ def main():
     updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
     dp = updater.dispatcher
 
+    
+    
     dp.add_handler(CommandHandler("classifica", classifica_command))
-    dp.add_handler(CommandHandler("pubblica", pubblica_classifica))
+    dp.add_handler(CommandHandler("pubblica", pubblica_classifica, pass_args=True))
     dp.add_handler(CommandHandler("campionato", campionato_command))
-    dp.add_handler(CommandHandler("reset", reset_classifica))
+    dp.add_handler(CommandHandler("reset", reset_classifica, pass_args=True))
     dp.add_handler(CommandHandler("info", info_command))
     dp.add_handler(CallbackQueryHandler(mostra_classifica))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
@@ -344,5 +393,3 @@ def run_flask():
 
 if __name__ == '__main__':
     main()
-
-
