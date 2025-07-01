@@ -84,6 +84,17 @@ def handle_message(update, context):
         update.message.reply_text("⚠️ Messaggio non valido. Scrivi il nome del gioco e il tempo (es: Queens 1:23)")
 
 def classifica_command(update: Update, context: CallbackContext):
+    oggi = datetime.now().date().isoformat()
+    check_pubblicata = supabase.table("classifica_giornaliera")\
+        .select("id")\
+        .eq("data", oggi)\
+        .limit(1)\
+        .execute().data
+
+    if not check_pubblicata:
+        update.message.reply_text("⚠️ La classifica di oggi non è ancora stata pubblicata. Usa /pubblica prima di consultare la classifica.")
+        return
+
     keyboard = [
         [InlineKeyboardButton("Zip", callback_data='Zip')],
         [InlineKeyboardButton("Queens", callback_data='Queens')],
@@ -92,6 +103,7 @@ def classifica_command(update: Update, context: CallbackContext):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("📊 Quale classifica vuoi vedere?", reply_markup=reply_markup)
+
 
 def mostra_classifica(update: Update, context: CallbackContext):
     query = update.callback_query
