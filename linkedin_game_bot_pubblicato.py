@@ -1,41 +1,23 @@
 import logging
 import re
 from datetime import datetime
-from collections import defaultdict
-from statistics import mean
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler, CallbackContext
 from supabase import create_client
-import threading
-from flask import Flask, Response
+import os
 from functools import wraps
 
-
-
-# 👉 Inserisci qui il tuo TOKEN
-#TELEGRAM_BOT_TOKEN = '7749557927:AAEqGqcKa7Hd_Ow3WibkIUrz1bJUnvVHLZ0'
-
-# 👉 Supabase credentials
-#SUPABASE_URL = "https://kfyihmqughvjgdioyunu.supabase.co"
-#SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmeWlobXF1Z2h2amdkaW95dW51Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA4ODM2MzMsImV4cCI6MjA2NjQ1OTYzM30.QB-bdTWKchIJPQNQ119zx5Smc20YbUoArtFgWadeGqs"
-
-
-import os
-
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "2510")  
-ADMINS = ["mario"]  
-
-
+# Configurazione da environment
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "2510")
+ADMINS = ["mario"]  # usa sempre first_name minuscolo per gli admin
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-classifica_pubblicata = False
-
-# 🔧 Log
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 def tempo_to_secondi(tempo):
     m, s = map(int, tempo.split(":"))
@@ -44,25 +26,17 @@ def tempo_to_secondi(tempo):
 def parse_message(text):
     gioco_match = re.search(r'\b(zip|queens|tango)\b', text, re.IGNORECASE)
     gioco = gioco_match.group(1).capitalize() if gioco_match else None
-
     tempo_match = re.search(r'\b\d{1,2}:\d{2}\b', text)
     tempo = tempo_match.group(0) if tempo_match else None
-
     return gioco, tempo
-
 
 def is_admin(update, context):
     user_name = update.effective_user.first_name.lower()
-    # Verifica se utente è in lista admin
     if user_name in ADMINS:
         return True
-    # Verifica se password admin è passata come argomento al comando
     if context.args and context.args[0] == ADMIN_PASSWORD:
         return True
     return False
-
-
-
 
 def admin_only(func):
     @wraps(func)
@@ -73,14 +47,13 @@ def admin_only(func):
         return func(update, context, *args, **kwargs)
     return wrapper
 
-
-
 def salva_su_supabase(utente, gioco, tempo):
     try:
         supabase.table("risultati_giornalieri").insert({
             "utente": utente,
             "gioco": gioco,
-            "tempo": tempo
+            "tempo": tempo,
+            "timestamp": datetime.utcnow().isoformat() + "Z"
         }).execute()
         return True
     except Exception as e:
@@ -90,49 +63,45 @@ def salva_su_supabase(utente, gioco, tempo):
 def handle_message(update, context):
     user = update.effective_user.first_name
     text = update.message.text
+    oggi = datetime.utcnow().date().isoformat()
 
-    oggi = datetime.now().date().isoformat()
-
-    # Controlla se la classifica è già pubblicata per oggi
+    # Controllo classifica già pubblicata oggi
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
         .eq("data", oggi)\
-        .limit(1)\
-        .execute().data
-
+        .limit(1).execute().data
     if check_pubblicata:
         update.message.reply_text("❌ Non è più possibile inviare risultati per oggi: classifica già pubblicata.")
         return
 
     gioco, tempo = parse_message(text)
-
-    if gioco and tempo:
-        # Controlla se l'utente ha già inviato un risultato per questo gioco oggi
-        existing = supabase.table("risultati_giornalieri")\
-            .select("id")\
-            .eq("utente", user)\
-            .eq("gioco", gioco)\
-            .gte("timestamp", oggi + "T00:00:00Z")\
-            .lte("timestamp", oggi + "T23:59:59Z")\
-            .execute().data
-
-        if existing:
-            update.message.reply_text(f"⚠️ Hai già inviato un risultato per {gioco} oggi.")
-            return
-
-        successo = salva_su_supabase(user, gioco, tempo)
-        if successo:
-            update.message.reply_text(f"✅ Registrato: {gioco} in {tempo}, {user}!")
-        else:
-            update.message.reply_text("❌ Errore nel salvataggio. Riprova più tardi.")
-    else:
+    if not (gioco and tempo):
         update.message.reply_text("⚠️ Messaggio non valido. Scrivi il nome del gioco e il tempo (es: Queens 1:23)")
+        return
+
+    # Controllo se l'utente ha già inviato risultato per questo gioco oggi
+    existing = supabase.table("risultati_giornalieri")\
+        .select("id")\
+        .eq("utente", user)\
+        .eq("gioco", gioco)\
+        .gte("timestamp", f"{oggi}T00:00:00Z")\
+        .lte("timestamp", f"{oggi}T23:59:59Z")\
+        .execute().data
+
+    if existing:
+        update.message.reply_text(f"⚠️ Hai già inviato un risultato per {gioco} oggi.")
+        return
+
+    successo = salva_su_supabase(user, gioco, tempo)
+    if successo:
+        update.message.reply_text(f"✅ Registrato: {gioco} in {tempo}, {user}!")
+    else:
+        update.message.reply_text("❌ Errore nel salvataggio. Riprova più tardi.")
 
 def classifica_command(update: Update, context: CallbackContext):
-    oggi = datetime.now().date().isoformat()
-    utente = update.effective_user.username or update.effective_user.first_name
+    oggi = datetime.utcnow().date().isoformat()
+    utente = update.effective_user.first_name
 
-    # Controllo che l'utente abbia caricato tutti e 3 i risultati oggi
     giochi = ["Zip", "Queens", "Tango"]
     giochi_fatti = []
 
@@ -145,7 +114,6 @@ def classifica_command(update: Update, context: CallbackContext):
             .lte("timestamp", f"{oggi}T23:59:59Z")\
             .limit(1)\
             .execute().data
-
         if risultati:
             giochi_fatti.append(gioco)
 
@@ -163,12 +131,11 @@ def classifica_command(update: Update, context: CallbackContext):
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("📊 Quale classifica vuoi vedere?", reply_markup=reply_markup)
 
-
 def mostra_classifica(update: Update, context: CallbackContext):
     query = update.callback_query
     scelta = query.data
     query.answer()
-    oggi = datetime.now().date().isoformat()
+    oggi = datetime.utcnow().date().isoformat()
 
     try:
         if scelta == "Tutte":
@@ -185,7 +152,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
                     text += f"❌ Nessun risultato per {g}.\n\n"
                     continue
 
-                # Ordina per tempo convertito in secondi (funzione da definire)
                 risultati.sort(key=lambda r: tempo_to_secondi(r['tempo']))
                 text += f"🎮 {g}:\n"
                 for i, r in enumerate(risultati):
@@ -195,7 +161,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
             query.edit_message_text(text)
 
         elif scelta == "Campionato":
-            # Qui assumo che tu abbia una tabella 'classifica_totale' con questi campi
             data = supabase.table("classifica_totale")\
                 .select("utente, totale, zip, queens, tango")\
                 .order("totale", desc=True)\
@@ -213,7 +178,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
             query.edit_message_text(text)
 
         elif scelta == "Campionato_oggi":
-            # Prendiamo la classifica totale come base
             data = supabase.table("classifica_totale")\
                 .select("utente, totale, zip, queens, tango")\
                 .order("totale", desc=True)\
@@ -223,14 +187,12 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
                 return
 
-            # Prendiamo i risultati odierni per ogni utente e gioco
             risultati_oggi = supabase.table("risultati_giornalieri")\
                 .select("utente, gioco, tempo")\
                 .gte("timestamp", f"{oggi}T00:00:00Z")\
                 .lte("timestamp", f"{oggi}T23:59:59Z")\
                 .execute().data
 
-            # Organizza i risultati in dict[utente][gioco] = tempo
             tempi_per_utente = {}
             for r in risultati_oggi:
                 user = r['utente']
@@ -262,194 +224,123 @@ def mostra_classifica(update: Update, context: CallbackContext):
 
 @admin_only
 def pubblica_classifica(update: Update, context: CallbackContext):
-    global classifica_pubblicata
-    oggi = datetime.now().date().isoformat()
+    oggi = datetime.utcnow().date().isoformat()
+
+    # Controlla se già pubblicata
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
         .eq("data", oggi)\
-        .limit(1)\
-        .execute().data
+        .limit(1).execute().data
 
     if check_pubblicata:
         update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
         return
 
     giochi = ['Zip', 'Queens', 'Tango']
-    classifica_pubblicata = True
 
     for gioco in giochi:
         try:
             risultati = supabase.table("risultati_giornalieri")\
                 .select("utente, tempo")\
                 .eq("gioco", gioco)\
-                .gte("timestamp", oggi + "T00:00:00Z")\
-                .lte("timestamp", oggi + "T23:59:59Z")\
+                .gte("timestamp", f"{oggi}T00:00:00Z")\
+                .lte("timestamp", f"{oggi}T23:59:59Z")\
                 .execute().data
 
             if not risultati:
                 continue
 
             risultati.sort(key=lambda r: tempo_to_secondi(r['tempo']))
-            punteggi_posizione = [3, 2, 1]
-            utenti_punteggi = []
-            pos = 1
-            idx = 0
 
-            while idx < len(risultati) and pos <= 3:
-                gruppo = [risultati[idx]]
-                tempo_riferimento = tempo_to_secondi(risultati[idx]['tempo'])
-                idx += 1
-                while idx < len(risultati) and tempo_to_secondi(risultati[idx]['tempo']) == tempo_riferimento:
-                    gruppo.append(risultati[idx])
-                    idx += 1
-
-                punti_totali = sum(punteggi_posizione[pos-1:pos-1+len(gruppo)])
-                punti_per_utente = round(punti_totali / len(gruppo), 2)
-
-                for utente in gruppo:
-                    utenti_punteggi.append({
-                        "data": oggi,
-                        "gioco": gioco,
-                        "posizione": pos,
-                        "utente": utente['utente'],
-                        "tempo": utente['tempo'],
-                        "punti": punti_per_utente
-                    })
-
-                    esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente['utente']).execute().data
-                    if esistente:
-                        riga = esistente[0]
-                        nuovo_record = {
-                            "utente": utente['utente'],
-                            "totale": riga.get("totale", 0) + punti_per_utente,
-                            "zip": riga.get("zip", 0) + punti_per_utente if gioco.lower() == "zip" else riga.get("zip", 0),
-                            "queens": riga.get("queens", 0) + punti_per_utente if gioco.lower() == "queens" else riga.get("queens", 0),
-                            "tango": riga.get("tango", 0) + punti_per_utente if gioco.lower() == "tango" else riga.get("tango", 0)
-                        }
-                    else:
-                        nuovo_record = {
-                            "utente": utente['utente'],
-                            "totale": punti_per_utente,
-                            "zip": punti_per_utente if gioco.lower() == "zip" else 0,
-                            "queens": punti_per_utente if gioco.lower() == "queens" else 0,
-                            "tango": punti_per_utente if gioco.lower() == "tango" else 0
-                        }
-                    supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
-
-                pos += len(gruppo)
-
-            if utenti_punteggi:
-                supabase.table("classifica_giornaliera").insert(utenti_punteggi).execute()
+            for i, r in enumerate(risultati):
+                punti = len(risultati) - i
+                supabase.table("classifica_giornaliera").insert({
+                    "data": oggi,
+                    "utente": r['utente'],
+                    "gioco": gioco,
+                    "posizione": i + 1,
+                    "punti": punti
+                }).execute()
 
         except Exception as e:
-            logging.error(f"Errore pubblicazione classifica per {gioco}: {e}")
-            update.message.reply_text(f"❌ Errore nel calcolo della classifica per {gioco}.")
+            logging.error(f"Errore pubblica_classifica per {gioco}: {e}")
+            update.message.reply_text(f"Errore nella pubblicazione per {gioco}")
+            return
 
-    update.message.reply_text("✅ Classifiche pubblicate!")
-
-# def campionato_command(update: Update, context: CallbackContext):
-    # try:
-        # data = supabase.table("classifica_totale")\
-            # .select("utente, totale, zip, queens, tango")\
-            # .order("totale", desc=True)\
-            # .execute().data
-
-        # if not data:
-            # update.message.reply_text("❌ Nessun dato disponibile per il campionato.")
-            # return
-
-        # text = "🏆 Classifica Campionato\n\n"
-        # for i, r in enumerate(data):
-            # text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
-
-        # update.message.reply_text(text)
-
-    # except Exception as e:
-        # logging.error(f"Errore nel recupero classifica totale: {e}")
-        # update.message.reply_text("❌ Errore nel recupero della classifica totale.")
-
-@admin_only
-def reset_classifica(update: Update, context: CallbackContext):
+    # Calcolo classifica totale aggiornata
     try:
+        totale_agg = supabase.table("classifica_giornaliera")\
+            .select("utente, gioco, punti")\
+            .gte("data", oggi)\
+            .lte("data", oggi)\
+            .execute().data
+
+        punti_per_utente = {}
+
+        for r in totale_agg:
+            ut = r['utente']
+            gioco = r['gioco'].lower()
+            punti = r['punti']
+            if ut not in punti_per_utente:
+                punti_per_utente[ut] = {"zip": 0, "queens": 0, "tango": 0, "totale": 0}
+            punti_per_utente[ut][gioco] += punti
+            punti_per_utente[ut]['totale'] += punti
+
+        # Prima svuota o aggiorna tutta la tabella classifica_totale per oggi
         supabase.table("classifica_totale").delete().neq("utente", "").execute()
-        update.message.reply_text("🔄 Classifica totale azzerata con successo.")
+
+        # Inserisci nuova classifica_totale
+        for ut, p in punti_per_utente.items():
+            supabase.table("classifica_totale").insert({
+                "utente": ut,
+                "zip": p['zip'],
+                "queens": p['queens'],
+                "tango": p['tango'],
+                "totale": p['totale']
+            }).execute()
+
+        supabase.table("classifica_giornaliera").insert({
+            "data": oggi,
+            "utente": "Sistema",
+            "gioco": "Pubblicazione",
+            "posizione": 0,
+            "punti": 0
+        }).execute()
+
+        update.message.reply_text("✅ Classifica pubblicata con successo!")
+
     except Exception as e:
-        logging.error(f"Errore durante il reset della classifica totale: {e}")
-        update.message.reply_text("❌ Errore durante il reset della classifica totale.")
+        logging.error(f"Errore calcolo classifica totale: {e}")
+        update.message.reply_text("❌ Errore nel calcolo della classifica totale.")
+
+def reset_giornaliero(update: Update, context: CallbackContext):
+    oggi = datetime.utcnow().date().isoformat()
+    supabase.table("risultati_giornalieri").delete()\
+        .gte("timestamp", f"{oggi}T00:00:00Z")\
+        .lte("timestamp", f"{oggi}T23:59:59Z").execute()
+    update.message.reply_text("🗑️ Risultati di oggi resettati.")
 
 def info_command(update: Update, context: CallbackContext):
-    text = (
-        "ℹ️ Comandi disponibili:\n"
-        "/classifica – Mostra le classifiche giornaliere (Tango, Zip, Queens, Tutte).\n"
-        "/pubblica – Calcola e pubblica la classifica del giorno.\n"
-        "/campionato – Mostra la classifica totale (somma di tutti i giorni).\n"
-        "/reset – Azzera completamente la classifica totale.\n\n"
-        "Puoi anche inviare un messaggio tipo 'Queens 1:23' per registrare un risultato."
-    )
-    update.message.reply_text(text)
+    update.message.reply_text("🤖 Bot per gestione classifiche giochi LinkedIn.")
 
-
-def is_orario_attivo():
-    ora = datetime.now().hour
-    return 8 <= ora < 22  # attivo solo tra le 8:00 e le 19:59
-
-
+def get_user_id(update: Update):
+    # Uniforma user id per salvataggi e ricerche
+    return update.effective_user.first_name
 
 def main():
-
-    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
+    updater = Updater(TELEGRAM_BOT_TOKEN)
     dp = updater.dispatcher
 
-    
-    
-    dp.add_handler(CommandHandler("classifica", classifica_command))
-    dp.add_handler(CommandHandler("pubblica", pubblica_classifica, pass_args=True))
-  #  dp.add_handler(CommandHandler("campionato", campionato_command))
-    dp.add_handler(CommandHandler("reset", reset_classifica, pass_args=True))
-    dp.add_handler(CommandHandler("info", info_command))
-    dp.add_handler(CallbackQueryHandler(mostra_classifica))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    dp.add_handler(CommandHandler("classifica", classifica_command))
+    dp.add_handler(CallbackQueryHandler(mostra_classifica))
+    dp.add_handler(CommandHandler("pubblica", pubblica_classifica))
+    dp.add_handler(CommandHandler("reset", reset_giornaliero))
+    dp.add_handler(CommandHandler("info", info_command))
 
-    updater.start_webhook(
-    listen="0.0.0.0",
-    port=8080,
-    url_path=TELEGRAM_BOT_TOKEN,
-    webhook_url=os.environ.get("RENDER_EXTERNAL_URL") + "/" + TELEGRAM_BOT_TOKEN,
-)
-
-    print("🤖 Bot attivo.")
+    logging.info("Bot pronto e in ascolto...")
+    updater.start_polling()
     updater.idle()
 
-
-webserver = Flask('')
-
-
-@webserver.route('/')
-@webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
-def webhook():
-    from telegram import Update
-    from telegram.ext import Dispatcher
-
-    update = Update.de_json(request.get_json(force=True), updater.bot)
-    dp = updater.dispatcher
-    dispatcher = Dispatcher(updater.bot, None, workers=0, use_context=True)
-    dispatcher.add_handler(CommandHandler("classifica", classifica_command))
-    dispatcher.add_handler(CommandHandler("pubblica", pubblica_classifica))
-    # dispatcher.add_handler(CommandHandler("campionato", campionato_command))
-    dispatcher.add_handler(CommandHandler("reset", reset_classifica))
-    dispatcher.add_handler(CommandHandler("info", info_command))
-    dispatcher.add_handler(CallbackQueryHandler(mostra_classifica))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-
-    dispatcher.process_update(update)
-    return "OK"
-
-def home():
-    return Response("Bot attivo", status=200, mimetype='text/plain')
-
-
-def run_flask():
-    webserver.run(host='0.0.0.0', port=8080)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
