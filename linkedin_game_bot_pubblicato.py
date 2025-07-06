@@ -260,7 +260,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
         logging.error(f"Errore lettura Supabase: {e}")
         query.edit_message_text("❌ Errore nel recupero classifica.")
 
-
 @admin_only
 def pubblica_classifica(update: Update, context: CallbackContext):
     global classifica_pubblicata
@@ -277,6 +276,9 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     giochi = ['Zip', 'Queens', 'Tango']
     classifica_pubblicata = True
+
+    # Dizionario per tenere traccia punti per utente per ogni gioco
+    punti_per_utente_per_gioco = {g: {} for g in giochi}
 
     for gioco in giochi:
         try:
@@ -317,6 +319,10 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                         "punti": punti_per_utente
                     })
 
+                    # Salva punti per bonus dopo
+                    punti_per_utente_per_gioco[gioco][utente['utente']] = punti_per_utente
+
+                    # Aggiorna la classifica totale
                     esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente['utente']).execute().data
                     if esistente:
                         riga = esistente[0]
@@ -346,7 +352,53 @@ def pubblica_classifica(update: Update, context: CallbackContext):
             logging.error(f"Errore pubblicazione classifica per {gioco}: {e}")
             update.message.reply_text(f"❌ Errore nel calcolo della classifica per {gioco}.")
 
-    update.message.reply_text("✅ Classifiche pubblicate!")
+    # BONUS: 1 punto extra per chi ha punti in tutti e 3 i giochi
+    try:
+        # Trova utenti che hanno punti per tutti i giochi
+        utenti_bonus = set(punti_per_utente_per_gioco['Zip'].keys()) & set(punti_per_utente_per_gioco['Queens'].keys()) & set(punti_per_utente_per_gioco['Tango'].keys())
+
+        bonus_inserimenti = []
+        for utente in utenti_bonus:
+            # Inserisci il record bonus nella classifica giornaliera
+            bonus_inserimenti.append({
+                "data": oggi,
+                "gioco": "Bonus",
+                "posizione": None,
+                "utente": utente,
+                "tempo": None,
+                "punti": 1
+            })
+
+            # Aggiorna classifica totale con +1 punto bonus
+            esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente).execute().data
+            if esistente:
+                riga = esistente[0]
+                nuovo_record = {
+                    "utente": utente,
+                    "totale": riga.get("totale", 0) + 1,
+                    "zip": riga.get("zip", 0),
+                    "queens": riga.get("queens", 0),
+                    "tango": riga.get("tango", 0)
+                }
+            else:
+                nuovo_record = {
+                    "utente": utente,
+                    "totale": 1,
+                    "zip": 0,
+                    "queens": 0,
+                    "tango": 0
+                }
+            supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
+
+        if bonus_inserimenti:
+            supabase.table("classifica_giornaliera").insert(bonus_inserimenti).execute()
+
+    except Exception as e:
+        logging.error(f"Errore durante l'assegnazione bonus: {e}")
+        update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
+
+    update.message.reply_text("✅ Classifiche pubblicate! Bonus punti assegnati ai giocatori completi.")
+
 
 # def campionato_command(update: Update, context: CallbackContext):
     # try:
