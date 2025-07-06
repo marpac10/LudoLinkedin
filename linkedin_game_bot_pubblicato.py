@@ -213,8 +213,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
 
             query.edit_message_text(text)
 
-		
-
         elif scelta == "Campionato_oggi":
             # Prendiamo la classifica totale come base
             data = supabase.table("classifica_totale")\
@@ -223,24 +221,24 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 .execute().data
 
             if not data:
-		query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
+                query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
                 return
 
             # Prendiamo i risultati odierni per ogni utente e gioco
-             punti_oggi = supabase.table("classifica_giornaliera")\
+            punti_oggi = supabase.table("classifica_giornaliera")\
                 .select("utente, gioco, punti")\
                 .eq("data", oggi)\
-	        .execute().data
+                .execute().data
 
-            # Organizza i risultati in dict[utente][gioco] = tempo
-		    punti_per_utente = {}
-		    for r in punti_oggi:
-			user = r['utente']
-			gioco = r['gioco'].capitalize()
-			punti = r['punti']
-			if user not in punti_per_utente:
-			    punti_per_utente[user] = {}
-			    punti_per_utente[user][gioco] = punti
+            # Organizza i risultati in dict[utente][gioco] = punti
+            punti_per_utente = {}
+            for r in punti_oggi:
+                user = r['utente']
+                gioco = r['gioco'].capitalize()
+                punti = r['punti']
+                if user not in punti_per_utente:
+                    punti_per_utente[user] = {}
+                punti_per_utente[user][gioco] = punti
 
             text = "🏆 Classifica Campionato (con punti odierni)\n\n"
             for i, r in enumerate(data):
@@ -261,6 +259,7 @@ def mostra_classifica(update: Update, context: CallbackContext):
     except Exception as e:
         logging.error(f"Errore lettura Supabase: {e}")
         query.edit_message_text("❌ Errore nel recupero classifica.")
+
 
 @admin_only
 def pubblica_classifica(update: Update, context: CallbackContext):
