@@ -223,7 +223,7 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 .execute().data
 
             if not data:
-				query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
+			    query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
                 return
 
             # Prendiamo i risultati odierni per ogni utente e gioco
