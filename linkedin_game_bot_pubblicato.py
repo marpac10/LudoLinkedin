@@ -128,9 +128,11 @@ def handle_message(update, context):
     else:
         update.message.reply_text("⚠️ Messaggio non valido. Scrivi il nome del gioco e il tempo (es: Queens 1:23)")
 
-
 def classifica_command(update: Update, context: CallbackContext):
     oggi = datetime.now().date().isoformat()
+    user_id = update.effective_user.id
+
+    # Controllo pubblicazione classifica (come prima)
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
         .eq("data", oggi)\
@@ -138,14 +140,32 @@ def classifica_command(update: Update, context: CallbackContext):
         .execute().data
 
     if not check_pubblicata:
-        update.message.reply_text("⚠️ La classifica di oggi non è ancora stata pubblicata. Usa /pubblica prima di consultare la classifica.")
-        return
+        giochi = ["Zip", "Queens", "Tango"]
+        giochi_fatti = []
 
+        for gioco in giochi:
+            risultati = supabase.table("risultati_giornalieri")\
+                .select("id")\
+                .eq("user_id", user_id)\
+                .eq("gioco", gioco)\
+                .gte("timestamp", oggi + "T00:00:00Z")\
+                .lte("timestamp", oggi + "T23:59:59Z")\
+                .limit(1)\
+                .execute().data
+            if risultati:
+                giochi_fatti.append(gioco)
+
+        if len(giochi_fatti) < 3:
+            update.message.reply_text(
+                "⚠️ Per vedere la classifica prima della pubblicazione, devi prima caricare tutti e 3 i giochi: Zip, Queens e Tango."
+            )
+            return
+
+    # Nuovo menu con 3 bottoni
     keyboard = [
-        [InlineKeyboardButton("Zip", callback_data='Zip')],
-        [InlineKeyboardButton("Queens", callback_data='Queens')],
-        [InlineKeyboardButton("Tango", callback_data='Tango')],
-        [InlineKeyboardButton("Tutte", callback_data='Tutte')],
+        [InlineKeyboardButton("🏆 Classifica Tutte", callback_data='Tutte')],
+        [InlineKeyboardButton("🏆 Classifica Campionato", callback_data='Campionato')],
+        [InlineKeyboardButton("🏆 Campionato (oggi)", callback_data='Campionato_oggi')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("📊 Quale classifica vuoi vedere?", reply_markup=reply_markup)
@@ -153,12 +173,12 @@ def classifica_command(update: Update, context: CallbackContext):
 
 def mostra_classifica(update: Update, context: CallbackContext):
     query = update.callback_query
-    gioco = query.data
+    scelta = query.data
     query.answer()
     oggi = datetime.now().date().isoformat()
 
     try:
-        if gioco == "Tutte":
+        if scelta == "Tutte":
             text = "📊 Classifiche di oggi\n\n"
             for g in ['Zip', 'Queens', 'Tango']:
                 risultati = supabase.table("risultati_giornalieri")\
@@ -176,25 +196,68 @@ def mostra_classifica(update: Update, context: CallbackContext):
                     text += f"{i+1}. {r['utente']} - {r['tempo']}\n"
                 text += "\n"
             query.edit_message_text(text)
-        else:
-            risultati = supabase.table("risultati_giornalieri")\
-                .select("utente, tempo")\
-                .eq("gioco", gioco)\
+
+        elif scelta == "Campionato":
+            # Classifica totale (campionato)
+            data = supabase.table("classifica_totale")\
+                .select("utente, totale, zip, queens, tango")\
+                .order("totale", desc=True)\
+                .execute().data
+
+            if not data:
+                query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
+                return
+
+            text = "🏆 Classifica Campionato (totale)\n\n"
+            for i, r in enumerate(data):
+                text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
+
+            query.edit_message_text(text)
+
+        elif scelta == "Campionato_oggi":
+            # Qui mostriamo classifica totale con i tempi odierni tra parentesi
+            data = supabase.table("classifica_totale")\
+                .select("utente, totale, zip, queens, tango")\
+                .order("totale", desc=True)\
+                .execute().data
+
+            if not data:
+                query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
+                return
+
+            # Prendiamo i risultati odierni per tutti i giochi, raggruppati per utente e gioco
+            risultati_oggi = supabase.table("risultati_giornalieri")\
+                .select("utente, gioco, tempo")\
                 .gte("timestamp", oggi + "T00:00:00Z")\
                 .lte("timestamp", oggi + "T23:59:59Z")\
                 .execute().data
 
-            if not risultati:
-                query.edit_message_text(f"❌ Nessun risultato per {gioco} oggi.")
-                return
+            # Organizza i tempi odierni per utente e gioco
+            tempi_per_utente = {}
+            for r in risultati_oggi:
+                user = r['utente']
+                gioco = r['gioco']
+                tempo = r['tempo']
+                if user not in tempi_per_utente:
+                    tempi_per_utente[user] = {}
+                tempi_per_utente[user][gioco] = tempo
 
-            risultati.sort(key=lambda r: tempo_to_secondi(r['tempo']))
+            text = "🏆 Classifica Campionato (con tempi odierni)\n\n"
+            for i, r in enumerate(data):
+                user = r['utente']
+                # Prepara stringa tempi odierni (o '-' se non presente)
+                tempi_testo = []
+                for g in ['Zip', 'Queens', 'Tango']:
+                    t = tempi_per_utente.get(user, {}).get(g, '-')
+                    tempi_testo.append(f"{g}: {t}")
+                tempi_str = ", ".join(tempi_testo)
 
-            text = f"📊 Classifica {gioco} - {oggi}\n\n"
-            for i, r in enumerate(risultati):
-                text += f"{i+1}. {r['utente']} - {r['tempo']}\n"
+                text += f"{i+1}. {user} - {r['totale']} pt ({tempi_str})\n"
 
             query.edit_message_text(text)
+
+        else:
+            query.edit_message_text("❌ Scelta non riconosciuta.")
 
     except Exception as e:
         logging.error(f"Errore lettura Supabase: {e}")
@@ -287,26 +350,26 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     update.message.reply_text("✅ Classifiche pubblicate!")
 
-def campionato_command(update: Update, context: CallbackContext):
-    try:
-        data = supabase.table("classifica_totale")\
-            .select("utente, totale, zip, queens, tango")\
-            .order("totale", desc=True)\
-            .execute().data
+# def campionato_command(update: Update, context: CallbackContext):
+    # try:
+        # data = supabase.table("classifica_totale")\
+            # .select("utente, totale, zip, queens, tango")\
+            # .order("totale", desc=True)\
+            # .execute().data
 
-        if not data:
-            update.message.reply_text("❌ Nessun dato disponibile per il campionato.")
-            return
+        # if not data:
+            # update.message.reply_text("❌ Nessun dato disponibile per il campionato.")
+            # return
 
-        text = "🏆 Classifica Campionato\n\n"
-        for i, r in enumerate(data):
-            text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
+        # text = "🏆 Classifica Campionato\n\n"
+        # for i, r in enumerate(data):
+            # text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
 
-        update.message.reply_text(text)
+        # update.message.reply_text(text)
 
-    except Exception as e:
-        logging.error(f"Errore nel recupero classifica totale: {e}")
-        update.message.reply_text("❌ Errore nel recupero della classifica totale.")
+    # except Exception as e:
+        # logging.error(f"Errore nel recupero classifica totale: {e}")
+        # update.message.reply_text("❌ Errore nel recupero della classifica totale.")
 
 @admin_only
 def reset_classifica(update: Update, context: CallbackContext):
@@ -375,7 +438,7 @@ def webhook():
     dispatcher = Dispatcher(updater.bot, None, workers=0, use_context=True)
     dispatcher.add_handler(CommandHandler("classifica", classifica_command))
     dispatcher.add_handler(CommandHandler("pubblica", pubblica_classifica))
-    dispatcher.add_handler(CommandHandler("campionato", campionato_command))
+    # dispatcher.add_handler(CommandHandler("campionato", campionato_command))
     dispatcher.add_handler(CommandHandler("reset", reset_classifica))
     dispatcher.add_handler(CommandHandler("info", info_command))
     dispatcher.add_handler(CallbackQueryHandler(mostra_classifica))
