@@ -225,32 +225,31 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 return
 
             # Prendiamo i risultati odierni per ogni utente e gioco
-            risultati_oggi = supabase.table("risultati_giornalieri")\
-                .select("utente, gioco, tempo")\
-                .gte("timestamp", f"{oggi}T00:00:00Z")\
-                .lte("timestamp", f"{oggi}T23:59:59Z")\
-                .execute().data
+            risultati_oggi = supabase.table("classifica_giornaliera")\
+                .select("utente, gioco, punti")\
+                .eq("data", oggi)\
+				.execute().data
 
             # Organizza i risultati in dict[utente][gioco] = tempo
-            tempi_per_utente = {}
-            for r in risultati_oggi:
-                user = r['utente']
-                gioco = r['gioco']
-                tempo = r['tempo']
-                if user not in tempi_per_utente:
-                    tempi_per_utente[user] = {}
-                tempi_per_utente[user][gioco] = tempo
+            punti_per_utente = {}
+			for r in punti_oggi:
+				user = r['utente']
+				gioco = r['gioco'].capitalize()
+				punti = r['punti']
+				if user not in punti_per_utente:
+					punti_per_utente[user] = {}
+				punti_per_utente[user][gioco] = punti
 
-            text = "🏆 Classifica Campionato (con tempi odierni)\n\n"
+            text = "🏆 Classifica Campionato (con punti odierni)\n\n"
             for i, r in enumerate(data):
                 user = r['utente']
-                tempi_testo = []
+                punti_testo = []
                 for g in ['Zip', 'Queens', 'Tango']:
-                    t = tempi_per_utente.get(user, {}).get(g, '-')
-                    tempi_testo.append(f"{g}: {t}")
-                tempi_str = ", ".join(tempi_testo)
+                    t = punti_per_utente.get(user, {}).get(g, 0)
+                    punti_testo.append(f"{g}: {t}")
+                punti_str = ", ".join(punti_testo)
 
-                text += f"{i+1}. {user} - {r['totale']} pt ({tempi_str})\n"
+                text += f"{i+1}. {user} - {r['totale']} pt ({punti_str})\n"
 
             query.edit_message_text(text)
 
