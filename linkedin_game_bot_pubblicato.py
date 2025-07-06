@@ -130,42 +130,35 @@ def handle_message(update, context):
 
 def classifica_command(update: Update, context: CallbackContext):
     oggi = datetime.now().date().isoformat()
-    user_id = update.effective_user.id
+    utente = update.effective_user.username or update.effective_user.first_name
 
-    # Controllo pubblicazione classifica (come prima)
-    check_pubblicata = supabase.table("classifica_giornaliera")\
-        .select("id")\
-        .eq("data", oggi)\
-        .limit(1)\
-        .execute().data
+    # Controllo che l'utente abbia caricato tutti e 3 i risultati oggi
+    giochi = ["Zip", "Queens", "Tango"]
+    giochi_fatti = []
 
-    if not check_pubblicata:
-        giochi = ["Zip", "Queens", "Tango"]
-        giochi_fatti = []
+    for gioco in giochi:
+        risultati = supabase.table("risultati_giornalieri")\
+            .select("id")\
+            .eq("utente", utente)\
+            .eq("gioco", gioco)\
+            .gte("timestamp", f"{oggi}T00:00:00Z")\
+            .lte("timestamp", f"{oggi}T23:59:59Z")\
+            .limit(1)\
+            .execute().data
 
-        for gioco in giochi:
-            risultati = supabase.table("risultati_giornalieri")\
-                .select("id")\
-                .eq("user_id", user_id)\
-                .eq("gioco", gioco)\
-                .gte("timestamp", oggi + "T00:00:00Z")\
-                .lte("timestamp", oggi + "T23:59:59Z")\
-                .limit(1)\
-                .execute().data
-            if risultati:
-                giochi_fatti.append(gioco)
+        if risultati:
+            giochi_fatti.append(gioco)
 
-        if len(giochi_fatti) < 3:
-            update.message.reply_text(
-                "⚠️ Per vedere la classifica prima della pubblicazione, devi prima caricare tutti e 3 i giochi: Zip, Queens e Tango."
-            )
-            return
+    if len(giochi_fatti) < 3:
+        update.message.reply_text(
+            "⚠️ Per vedere la classifica prima della pubblicazione, devi prima caricare tutti e 3 i giochi: Zip, Queens e Tango."
+        )
+        return
 
-    # Nuovo menu con 3 bottoni
     keyboard = [
         [InlineKeyboardButton("🏆 Classifica Tutte", callback_data='Tutte')],
         [InlineKeyboardButton("🏆 Classifica Campionato", callback_data='Campionato')],
-        [InlineKeyboardButton("🏆 Campionato (oggi)", callback_data='Campionato_oggi')]
+        [InlineKeyboardButton("🏆 Campionato (oggi)", callback_data='Campionato_oggi')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     update.message.reply_text("📊 Quale classifica vuoi vedere?", reply_markup=reply_markup)
@@ -184,21 +177,25 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 risultati = supabase.table("risultati_giornalieri")\
                     .select("utente, tempo")\
                     .eq("gioco", g)\
-                    .gte("timestamp", oggi + "T00:00:00Z")\
-                    .lte("timestamp", oggi + "T23:59:59Z")\
+                    .gte("timestamp", f"{oggi}T00:00:00Z")\
+                    .lte("timestamp", f"{oggi}T23:59:59Z")\
                     .execute().data
+
                 if not risultati:
                     text += f"❌ Nessun risultato per {g}.\n\n"
                     continue
+
+                # Ordina per tempo convertito in secondi (funzione da definire)
                 risultati.sort(key=lambda r: tempo_to_secondi(r['tempo']))
                 text += f"🎮 {g}:\n"
                 for i, r in enumerate(risultati):
                     text += f"{i+1}. {r['utente']} - {r['tempo']}\n"
                 text += "\n"
+
             query.edit_message_text(text)
 
         elif scelta == "Campionato":
-            # Classifica totale (campionato)
+            # Qui assumo che tu abbia una tabella 'classifica_totale' con questi campi
             data = supabase.table("classifica_totale")\
                 .select("utente, totale, zip, queens, tango")\
                 .order("totale", desc=True)\
@@ -210,12 +207,13 @@ def mostra_classifica(update: Update, context: CallbackContext):
 
             text = "🏆 Classifica Campionato (totale)\n\n"
             for i, r in enumerate(data):
-                text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
+                text += (f"{i+1}. {r['utente']} - {r['totale']} pt "
+                         f"(Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n")
 
             query.edit_message_text(text)
 
         elif scelta == "Campionato_oggi":
-            # Qui mostriamo classifica totale con i tempi odierni tra parentesi
+            # Prendiamo la classifica totale come base
             data = supabase.table("classifica_totale")\
                 .select("utente, totale, zip, queens, tango")\
                 .order("totale", desc=True)\
@@ -225,14 +223,14 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
                 return
 
-            # Prendiamo i risultati odierni per tutti i giochi, raggruppati per utente e gioco
+            # Prendiamo i risultati odierni per ogni utente e gioco
             risultati_oggi = supabase.table("risultati_giornalieri")\
                 .select("utente, gioco, tempo")\
-                .gte("timestamp", oggi + "T00:00:00Z")\
-                .lte("timestamp", oggi + "T23:59:59Z")\
+                .gte("timestamp", f"{oggi}T00:00:00Z")\
+                .lte("timestamp", f"{oggi}T23:59:59Z")\
                 .execute().data
 
-            # Organizza i tempi odierni per utente e gioco
+            # Organizza i risultati in dict[utente][gioco] = tempo
             tempi_per_utente = {}
             for r in risultati_oggi:
                 user = r['utente']
@@ -245,7 +243,6 @@ def mostra_classifica(update: Update, context: CallbackContext):
             text = "🏆 Classifica Campionato (con tempi odierni)\n\n"
             for i, r in enumerate(data):
                 user = r['utente']
-                # Prepara stringa tempi odierni (o '-' se non presente)
                 tempi_testo = []
                 for g in ['Zip', 'Queens', 'Tango']:
                     t = tempi_per_utente.get(user, {}).get(g, '-')
