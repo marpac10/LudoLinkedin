@@ -407,7 +407,7 @@ def main():
     
     dp.add_handler(CommandHandler("classifica", classifica_command))
     dp.add_handler(CommandHandler("pubblica", pubblica_classifica, pass_args=True))
-    dp.add_handler(CommandHandler("campionato", campionato_command))
+  #  dp.add_handler(CommandHandler("campionato", campionato_command))
     dp.add_handler(CommandHandler("reset", reset_classifica, pass_args=True))
     dp.add_handler(CommandHandler("info", info_command))
     dp.add_handler(CallbackQueryHandler(mostra_classifica))
