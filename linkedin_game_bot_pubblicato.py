@@ -223,23 +223,23 @@ def mostra_classifica(update: Update, context: CallbackContext):
                 .execute().data
 
             if not data:
-			    query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
+		query.edit_message_text("❌ Nessun dato disponibile per il campionato.")
                 return
 
             # Prendiamo i risultati odierni per ogni utente e gioco
              punti_oggi = supabase.table("classifica_giornaliera")\
                 .select("utente, gioco, punti")\
                 .eq("data", oggi)\
-			    .execute().data
+	        .execute().data
 
             # Organizza i risultati in dict[utente][gioco] = tempo
 		    punti_per_utente = {}
 		    for r in punti_oggi:
-			    user = r['utente']
-			    gioco = r['gioco'].capitalize()
-			    punti = r['punti']
-			    if user not in punti_per_utente:
-				    punti_per_utente[user] = {}
+			user = r['utente']
+			gioco = r['gioco'].capitalize()
+			punti = r['punti']
+			if user not in punti_per_utente:
+			    punti_per_utente[user] = {}
 			    punti_per_utente[user][gioco] = punti
 
             text = "🏆 Classifica Campionato (con punti odierni)\n\n"
