@@ -474,11 +474,9 @@ def main():
     updater.idle()
 
 
-webserver = Flask('')
+webserver = Flask(__name__)
 
-@webserver.route("/ping", methods=["GET"])
-def ping():
-    return "pong", 200
+
 
 
 @webserver.route('/')
@@ -509,11 +507,7 @@ def run_flask():
     webserver.run(host='0.0.0.0', port=8080)
 
 
-app = Flask(__name__)
 
-@webserver.route("/")
-def healthcheck():
-    return Response("✅ Bot attivo", status=200)
 
 
 if __name__ == '__main__':
