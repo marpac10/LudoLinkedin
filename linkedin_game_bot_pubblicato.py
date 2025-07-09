@@ -483,6 +483,7 @@ webserver = Flask(__name__)
 def home():
     return "Bot attivo e online!"
 
+
 @webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
 def telegram_webhook():
     # qui il codice per gestire il webhook Telegram
@@ -511,12 +512,15 @@ def home():
     return Response("Bot attivo", status=200, mimetype='text/plain')
 
 
+
+
+import threading
+
 def run_flask():
     webserver.run(host='0.0.0.0', port=8080)
 
+if __name__ == "__main__":
+    threading.Thread(target=run_flask).start()
+    main()  # qui parte anche il bot Telegram
 
 
-
-
-if __name__ == '__main__':
-    main()
