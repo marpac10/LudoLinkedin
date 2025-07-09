@@ -479,8 +479,16 @@ webserver = Flask(__name__)
 
 
 
-@webserver.route('/')
+@webserver.route('/', methods=['GET'])
+def home():
+    return "Bot attivo e online!"
+
 @webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
+def telegram_webhook():
+    # qui il codice per gestire il webhook Telegram
+    pass
+
+
 def webhook():
     from telegram import Update
     from telegram.ext import Dispatcher
