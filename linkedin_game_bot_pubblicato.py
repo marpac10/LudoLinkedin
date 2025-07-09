@@ -486,27 +486,23 @@ def home():
 
 @webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
 def telegram_webhook():
-    # qui il codice per gestire il webhook Telegram
-    pass
-
-
-def webhook():
     from telegram import Update
     from telegram.ext import Dispatcher
 
     update = Update.de_json(request.get_json(force=True), updater.bot)
-    dp = updater.dispatcher
     dispatcher = Dispatcher(updater.bot, None, workers=0, use_context=True)
+
     dispatcher.add_handler(CommandHandler("classifica", classifica_command))
     dispatcher.add_handler(CommandHandler("pubblica", pubblica_classifica))
-    # dispatcher.add_handler(CommandHandler("campionato", campionato_command))
     dispatcher.add_handler(CommandHandler("reset", reset_classifica))
     dispatcher.add_handler(CommandHandler("info", info_command))
     dispatcher.add_handler(CallbackQueryHandler(mostra_classifica))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     dispatcher.process_update(update)
-    return "OK"
+
+    return "OK", 200  # ✅ Questo è importante per evitare il 500
+
 
 def home():
     return Response("Bot attivo", status=200, mimetype='text/plain')
