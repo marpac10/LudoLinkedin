@@ -476,6 +476,10 @@ def main():
 
 webserver = Flask('')
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "pong", 200
+
 
 @webserver.route('/')
 @webserver.route(f'/{TELEGRAM_BOT_TOKEN}', methods=['POST'])
@@ -503,6 +507,14 @@ def home():
 
 def run_flask():
     webserver.run(host='0.0.0.0', port=8080)
+
+
+app = Flask(__name__)
+
+@app.route("/")
+def healthcheck():
+    return Response("✅ Bot attivo", status=200)
+
 
 if __name__ == '__main__':
     main()
