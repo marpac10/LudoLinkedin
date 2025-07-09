@@ -7,7 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, MessageHandler, Filters, CommandHandler, CallbackQueryHandler, CallbackContext
 from supabase import create_client
 import threading
-from flask import Flask, Response
+from flask import Flask, Response, request
 from functools import wraps
 
 
