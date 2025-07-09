@@ -22,8 +22,7 @@ from functools import wraps
 
 import os
 
-updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
-dp = updater.dispatcher
+
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "2510")  
 ADMINS = ["mario"]  
@@ -32,6 +31,9 @@ ADMINS = ["mario"]
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
+dp = updater.dispatcher
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
