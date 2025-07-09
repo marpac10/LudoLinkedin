@@ -446,12 +446,11 @@ def is_orario_attivo():
     ora = datetime.now().hour
     return 8 <= ora < 22  # attivo solo tra le 8:00 e le 19:59
 
-
+    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
+    dp = updater.dispatcher
 
 def main():
 
-    updater = Updater(TELEGRAM_BOT_TOKEN, use_context=True)
-    dp = updater.dispatcher
 
     
     
