@@ -476,7 +476,7 @@ def main():
 
 webserver = Flask('')
 
-@app.route("/ping", methods=["GET"])
+@webserver.route("/ping", methods=["GET"])
 def ping():
     return "pong", 200
 
@@ -511,7 +511,7 @@ def run_flask():
 
 app = Flask(__name__)
 
-@app.route("/")
+@webserver.route("/")
 def healthcheck():
     return Response("✅ Bot attivo", status=200)
 
