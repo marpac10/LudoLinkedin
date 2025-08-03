@@ -298,12 +298,12 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                 continue
 
             risultati.sort(key=lambda r: tempo_to_secondi(r['tempo']))
-            punteggi_posizione = [3, 2, 1]
+            punteggi_posizione = [5,4,3, 2, 1]
             utenti_punteggi = []
             pos = 1
             idx = 0
 
-            while idx < len(risultati) and pos <= 3:
+            while idx < len(risultati) and pos <= 5:
                 gruppo = [risultati[idx]]
                 tempo_riferimento = tempo_to_secondi(risultati[idx]['tempo'])
                 idx += 1
