@@ -584,6 +584,7 @@ def telegram_webhook():
     dispatcher.add_handler(CommandHandler("pubblica", pubblica_classifica))
     dispatcher.add_handler(CommandHandler("reset", reset_classifica))
     dispatcher.add_handler(CommandHandler("info", info_command))
+	dispatcher.add_handler(CommandHandler("getid", get_chat_id))
     dispatcher.add_handler(CallbackQueryHandler(mostra_classifica))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
