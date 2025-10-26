@@ -583,6 +583,7 @@ def pubblica_auto():
     fake_update = Update(update_id=0, message=None)
     context = CallbackContext(dispatcher=dp)
     pubblica_classifica(fake_update, context)
+	updater.bot.send_message(chat_id=-4893176519, text="Classifica pubblicata, corri a vedere com'è andata!")
     return "OK"
 
 
