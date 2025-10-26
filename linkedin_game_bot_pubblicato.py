@@ -373,17 +373,21 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                 # Bonus Saturday: ultimi 3 in classifica totale
                 if bonus_attivo == "Gli ultimi saranno i primi - ultimi 3 in classifica x2":
-                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=False).limit(3).execute().data
-                    ultimi_utenti = {r['utente'] for r in classifica}
-                    if gruppo[0]['utente'] in ultimi_utenti:
-                        punti_per_utente *= 2
+                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=False).execute().data
+				    if len(classifica)>=3:
+					    terzultimo_punteggio = classifica[2]['totale']
+					    ultimi_utenti = {r['utente'] for r in classifica if r['totale'] <= terzultimo_punteggio}
+                        if gruppo[0]['utente'] in ultimi_utenti:
+                            punti_per_utente *= 2
 
                 # Bonus Sunday: primi 3 in classifica totale
                 if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
-                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=True).limit(3).execute().data
-                    top_utenti = {r['utente'] for r in classifica}
-                    if gruppo[0]['utente'] in top_utenti:
-                        punti_per_utente = round(punti_per_utente / 2, 2)
+                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=True).execute().data
+				    if len(classifica)>=3:
+                        terzo_punteggio = classifica[2]['totale']
+					    top_utenti = {r['utente'] for r in classifica if r['totale'] >= terzo_punteggio}
+                        if gruppo[0]['utente'] in top_utenti:
+                            punti_per_utente = round(punti_per_utente / 2, 2)
 
 
 
@@ -580,11 +584,61 @@ def ricorda_giocare():
 
 @webserver.route("/pubblica_auto", methods=["GET"])
 def pubblica_auto():
+    from datetime import datetime
+
+    # Esegui la pubblicazione della classifica
     fake_update = Update(update_id=0, message=None)
     context = CallbackContext(dispatcher=dp)
     pubblica_classifica(fake_update, context)
-    updater.bot.send_message(chat_id=-4893176519, text="Classifica pubblicata, corri a vedere com'è andata!")
-    return "OK"
+
+    oggi = datetime.now().date().isoformat()
+
+    # Recupera la classifica "Campionato_oggi"
+    try:
+        # Classifica totale
+        data = supabase.table("classifica_totale")\
+            .select("utente, totale, zip, queens, tango")\
+            .order("totale", desc=True)\
+            .execute().data
+
+        if not data:
+            updater.bot.send_message(chat_id=-4893176519, text="❌ Nessun dato disponibile per il campionato.")
+            return "OK"
+
+        # Punti odierni
+        punti_oggi = supabase.table("classifica_giornaliera")\
+            .select("utente, gioco, punti")\
+            .eq("data", oggi)\
+            .execute().data
+
+        punti_per_utente = {}
+        for r in punti_oggi:
+            user = r['utente']
+            gioco = r['gioco'].capitalize()
+            punti = r['punti']
+            if user not in punti_per_utente:
+                punti_per_utente[user] = {}
+            punti_per_utente[user][gioco] = punti
+
+        # Costruisci il messaggio
+        text = "🏆 Classifica Campionato (con punti odierni)\n\n"
+        for i, r in enumerate(data):
+            user = r['utente']
+            punti_testo = []
+            for g in ['Zip', 'Queens', 'Tango']:
+                t = punti_per_utente.get(user, {}).get(g, 0)
+                punti_testo.append(f"{g}: {t}")
+            punti_str = ", ".join(punti_testo)
+            text += f"{i+1}. {user} - {r['totale']} pt ({punti_str})\n"
+
+        updater.bot.send_message(chat_id=-4893176519, text=text)
+        return "OK"
+
+    except Exception as e:
+        logging.error(f"Errore nel recupero classifica campionato_oggi: {e}")
+        updater.bot.send_message(chat_id=-4893176519, text="❌ Errore nel recupero della classifica.")
+        return "OK"
+
 
 
 
