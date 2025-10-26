@@ -362,14 +362,14 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                 # Bonus Saturday: ultimi 3 in classifica totale
                 if bonus_attivo == "Ultimi x2":
-                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", ascending=True).limit(3).execute().data
+                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=False).limit(3).execute().data
                     ultimi_utenti = {r['utente'] for r in classifica}
                     if gruppo[0]['utente'] in ultimi_utenti:
                         punti_per_utente *= 2
 
                 # Bonus Sunday: primi 3 in classifica totale
                 if bonus_attivo == "Top dimezzati":
-                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", ascending=False).limit(3).execute().data
+                    classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=True).limit(3).execute().data
                     top_utenti = {r['utente'] for r in classifica}
                     if gruppo[0]['utente'] in top_utenti:
                         punti_per_utente = round(punti_per_utente / 2, 2)
