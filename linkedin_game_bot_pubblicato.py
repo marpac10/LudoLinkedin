@@ -304,7 +304,11 @@ def pubblica_classifica(update: Update, context: CallbackContext):
         .execute().data
 
     if check_pubblicata:
-        update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
+	    try:
+		    if update.message 
+			    update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
+        except Exception as e:
+            print(f"[LOG] Nessun messaggio da rispondere: {e}")		
         return
 
     giochi = ['Zip', 'Queens', 'Tango']
