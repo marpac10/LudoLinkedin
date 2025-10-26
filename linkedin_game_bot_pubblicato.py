@@ -305,14 +305,14 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
 
     if check_pubblicata:
-	    try:
-		    if update.message: 
-			    update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
-	    except Exception as e:
-		    print(f"[LOG] Nessun messaggio da rispondere: {e}")     
-	    return
-	
-	
+        try:
+            if update.message: 
+                update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
+        except Exception as e:
+            print(f"[LOG] Nessun messaggio da rispondere: {e}")     
+        return
+    
+    
     giochi = ['Zip', 'Queens', 'Tango']
     classifica_pubblicata = True
 
@@ -371,29 +371,29 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                     if gioco in soglie_tempo and tempo_sec <= soglie_tempo[gioco]:
                         punti_per_utente *= 2
 
-			    # Bonus Saturday: ultimi 3 in classifica totale
-			    if bonus_attivo == "Gli ultimi saranno i primi - ultimi 3 in classifica x2":
-				    classifica = supabase.table("classifica_totale")\
-					    .select("utente, totale")\
-					    .order("totale", desc=False)\
-					    .execute().data
-				    if len(classifica) >= 3:
-					    terzultimo_punteggio = classifica[2]['totale']
-					    ultimi_utenti = {r['utente'] for r in classifica if r['totale'] <= terzultimo_punteggio}
-					    if gruppo[0]['utente'] in ultimi_utenti:
-						    punti_per_utente *= 2
+                # Bonus Saturday: ultimi 3 in classifica totale
+                if bonus_attivo == "Gli ultimi saranno i primi - ultimi 3 in classifica x2":
+                    classifica = supabase.table("classifica_totale")\
+                        .select("utente, totale")\
+                        .order("totale", desc=False)\
+                        .execute().data
+                    if len(classifica) >= 3:
+                        terzultimo_punteggio = classifica[2]['totale']
+                        ultimi_utenti = {r['utente'] for r in classifica if r['totale'] <= terzultimo_punteggio}
+                        if gruppo[0]['utente'] in ultimi_utenti:
+                            punti_per_utente *= 2
 
-			    # Bonus Sunday: primi 3 in classifica totale
-			    if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
-				    classifica = supabase.table("classifica_totale")\
-					    .select("utente, totale")\
-					    .order("totale", desc=True)\
-					    .execute().data
-				    if len(classifica) >= 3:
-					    terzo_punteggio = classifica[2]['totale']
-					    top_utenti = {r['utente'] for r in classifica if r['totale'] >= terzo_punteggio}
-					    if gruppo[0]['utente'] in top_utenti:
-						    punti_per_utente = round(punti_per_utente / 2, 2)
+                # Bonus Sunday: primi 3 in classifica totale
+                if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
+                    classifica = supabase.table("classifica_totale")\
+                        .select("utente, totale")\
+                        .order("totale", desc=True)\
+                        .execute().data
+                    if len(classifica) >= 3:
+                        terzo_punteggio = classifica[2]['totale']
+                        top_utenti = {r['utente'] for r in classifica if r['totale'] >= terzo_punteggio}
+                        if gruppo[0]['utente'] in top_utenti:
+                            punti_per_utente = round(punti_per_utente / 2, 2)
 
 
 
