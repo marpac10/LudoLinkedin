@@ -502,6 +502,11 @@ def is_orario_attivo():
     return 8 <= ora < 22  # attivo solo tra le 8:00 e le 19:59
 
 
+def get_chat_id(update: Update, context: CallbackContext):
+    chat_id = update.effective_chat.id
+    update.message.reply_text(f"🆔 Chat ID: {chat_id}")
+
+
 
 def main():
 
@@ -514,6 +519,7 @@ def main():
     dp.add_handler(CommandHandler("reset", reset_classifica, pass_args=True))
     dp.add_handler(CommandHandler("info", info_command))
     dp.add_handler(CallbackQueryHandler(mostra_classifica))
+	dp.add_handler(CommandHandler("getid", get_chat_id))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     updater.start_webhook(
