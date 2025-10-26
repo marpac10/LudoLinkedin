@@ -305,7 +305,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     if check_pubblicata:
 	    try:
-		    if update.message 
+		    if update.message: 
 			    update.message.reply_text("⚠️ Classifica già pubblicata oggi.")
         except Exception as e:
             print(f"[LOG] Nessun messaggio da rispondere: {e}")		
