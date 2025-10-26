@@ -358,56 +358,58 @@ def pubblica_classifica(update: Update, context: CallbackContext):
             update.message.reply_text(f"❌ Errore nel calcolo della classifica per {gioco}.")
 
     # BONUS: 1 punto extra per chi ha punti in tutti e 3 i giochi
-	try:
-		# Trova utenti che hanno almeno 3 punti in ciascun gioco
-		utenti_zip = {utente for utente, punti in punti_per_utente_per_gioco['Zip'].items() if punti >= 3}
-		utenti_queens = {utente for utente, punti in punti_per_utente_per_gioco['Queens'].items() if punti >= 3}
-		utenti_tango = {utente for utente, punti in punti_per_utente_per_gioco['Tango'].items() if punti >= 3}
+        # BONUS: 1 punto extra per chi ha guadagnato almeno 3 punti in tutti e 3 i giochi
+    try:
+        # Filtra utenti con almeno 3 punti per ciascun gioco
+        utenti_zip = {utente for utente, punti in punti_per_utente_per_gioco['Zip'].items() if punti >= 3}
+        utenti_queens = {utente for utente, punti in punti_per_utente_per_gioco['Queens'].items() if punti >= 3}
+        utenti_tango = {utente for utente, punti in punti_per_utente_per_gioco['Tango'].items() if punti >= 3}
 
-		# Intersezione: utenti che hanno almeno 3 punti in tutti e tre i giochi
-		utenti_bonus = utenti_zip & utenti_queens & utenti_tango
+        # Intersezione: solo chi ha almeno 3 punti in tutti e tre i giochi
+        utenti_bonus = utenti_zip & utenti_queens & utenti_tango
 
-		bonus_inserimenti = []
-		for utente in utenti_bonus:
-			# Inserisci il record bonus nella classifica giornaliera
-			bonus_inserimenti.append({
-				"data": oggi,
-				"gioco": "Bonus",
-				"posizione": None,
-				"utente": utente,
-				"tempo": None,
-				"punti": 1
-			})
+        bonus_inserimenti = []
+        for utente in utenti_bonus:
+            # Inserisci il record bonus nella classifica giornaliera
+            bonus_inserimenti.append({
+                "data": oggi,
+                "gioco": "Bonus",
+                "posizione": None,
+                "utente": utente,
+                "tempo": None,
+                "punti": 1
+            })
 
-			# Aggiorna classifica totale con +1 punto bonus
-			esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente).execute().data
-			if esistente:
-				riga = esistente[0]
-				nuovo_record = {
-					"utente": utente,
-					"totale": riga.get("totale", 0) + 1,
-					"zip": riga.get("zip", 0),
-					"queens": riga.get("queens", 0),
-					"tango": riga.get("tango", 0)
-				}
-			else:
-				nuovo_record = {
-					"utente": utente,
-					"totale": 1,
-					"zip": 0,
-					"queens": 0,
-					"tango": 0
-				}
-			supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
+            # Aggiorna classifica totale con +1 punto bonus
+            esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente).execute().data
+            if esistente:
+                riga = esistente[0]
+                nuovo_record = {
+                    "utente": utente,
+                    "totale": riga.get("totale", 0) + 1,
+                    "zip": riga.get("zip", 0),
+                    "queens": riga.get("queens", 0),
+                    "tango": riga.get("tango", 0)
+                }
+            else:
+                nuovo_record = {
+                    "utente": utente,
+                    "totale": 1,
+                    "zip": 0,
+                    "queens": 0,
+                    "tango": 0
+                }
+            supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
 
-		if bonus_inserimenti:
-			supabase.table("classifica_giornaliera").insert(bonus_inserimenti).execute()
+        if bonus_inserimenti:
+            supabase.table("classifica_giornaliera").insert(bonus_inserimenti).execute()
 
-	except Exception as e:
-		logging.error(f"Errore durante l'assegnazione bonus: {e}")
-		update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
+    except Exception as e:
+        logging.error(f"Errore durante l'assegnazione bonus: {e}")
+        update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
 
-	update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
+    update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
+
 
 
 
