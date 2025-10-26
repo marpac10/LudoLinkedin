@@ -267,8 +267,30 @@ def mostra_classifica(update: Update, context: CallbackContext):
 
 @admin_only
 def pubblica_classifica(update: Update, context: CallbackContext):
-    global classifica_pubblicata
-    oggi = datetime.now().date().isoformat()
+    from datetime import datetime
+	global classifica_pubblicata
+    
+	oggi = datetime.now().date().isoformat()
+	giorno_settimana = datetime.now().strftime('%A')  # 'Monday', 'Tuesday', ...
+	
+	# Imposta il bonus attivo in base al giorno
+	bonus_attivo = None
+	if giorno_settimana == 'Monday':
+		bonus_attivo = "Tango x2"
+	elif giorno_settimana == 'Tuesday':
+		bonus_attivo = "Queens x2"
+	elif giorno_settimana == 'Wednesday':
+		bonus_attivo = "Zip x2"
+	elif giorno_settimana == 'Thursday':
+		bonus_attivo = "Primi x2"
+	elif giorno_settimana == 'Friday':
+		bonus_attivo = "Tempi veloci x2"
+	elif giorno_settimana == 'Saturday':
+		bonus_attivo = "Ultimi x2"
+	elif giorno_settimana == 'Sunday':
+		bonus_attivo = "Top dimezzati"
+
+	
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
         .eq("data", oggi)\
@@ -313,6 +335,46 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                 punti_totali = sum(punteggi_posizione[pos-1:pos-1+len(gruppo)])
                 punti_per_utente = round(punti_totali / len(gruppo), 2)
+				
+				# Applica bonus Monday: Tango x2
+                if bonus_attivo == "Tango x2" and gioco == "Tango":
+                    punti_per_utente *= 2
+					
+				# Bonus Tuesday: Queens x2
+				if bonus_attivo == "Queens x2" and gioco == "Queens":
+					punti_per_utente *= 2
+
+				# Bonus Wednesday: Zip x2
+				if bonus_attivo == "Zip x2" and gioco == "Zip":
+					punti_per_utente *= 2
+
+				# Bonus Thursday: tutti i primi posti x2
+				if bonus_attivo == "Primi x2" and pos == 1:
+					punti_per_utente *= 2
+
+				# Bonus Friday: tempo sotto soglia
+				soglie_tempo = {"Zip": 8, "Tango": 25, "Queens": 15}
+				if bonus_attivo == "Tempi veloci x2":
+					tempo_sec = tempo_to_secondi(gruppo[0]['tempo'])
+					if gioco in soglie_tempo and tempo_sec <= soglie_tempo[gioco]:
+						punti_per_utente *= 2
+
+				# Bonus Saturday: ultimi 3 in classifica totale
+				if bonus_attivo == "Ultimi x2":
+					classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", ascending=True).limit(3).execute().data
+					ultimi_utenti = {r['utente'] for r in classifica}
+					if gruppo[0]['utente'] in ultimi_utenti:
+						punti_per_utente *= 2
+
+				# Bonus Sunday: primi 3 in classifica totale
+				if bonus_attivo == "Top dimezzati":
+					classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", ascending=False).limit(3).execute().data
+					top_utenti = {r['utente'] for r in classifica}
+					if gruppo[0]['utente'] in top_utenti:
+						punti_per_utente = round(punti_per_utente / 2, 2)
+
+
+
 
                 for utente in gruppo:
                     utenti_punteggi.append({
