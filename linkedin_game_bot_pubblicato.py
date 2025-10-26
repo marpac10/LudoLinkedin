@@ -265,7 +265,7 @@ def mostra_classifica(update: Update, context: CallbackContext):
         logging.error(f"Errore lettura Supabase: {e}")
         query.edit_message_text("❌ Errore nel recupero classifica.")
 
-@admin_only
+
 def pubblica_classifica(update: Update, context: CallbackContext):
     from datetime import datetime
     global classifica_pubblicata
@@ -282,13 +282,13 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     # Imposta il bonus attivo in modo casuale ma stabile per il giorno
     bonus_possibili = [
-        "Tango x2",
-        "Queens x2",
-        "Zip x2",
-        "Primi x2",
-        "Tempi veloci x2",
-        "Ultimi x2",
-        "Top dimezzati"
+        "TanGOAT - punteggi Tango raddoppiati",
+        "BeTheKing - punteggi Queens raddoppiati",
+        "FastFinger - punteggi Zip raddoppiati",
+        "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
+        "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ",
+        "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
+        "I primi saranno gli ultimi - top 3 in classifica /2"
     ]
 
     random.seed(oggi.toordinal())  # garantisce che il bonus sia stabile per il giorno
@@ -342,38 +342,38 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                 punti_totali = sum(punteggi_posizione[pos-1:pos-1+len(gruppo)])
                 punti_per_utente = round(punti_totali / len(gruppo), 2)
                 
-                # Applica bonus Monday: Tango x2
-                if bonus_attivo == "Tango x2" and gioco == "Tango":
+                # Applica bonus Monday: TanGOAT - punteggi Tango raddoppiati
+                if bonus_attivo == "TanGOAT - punteggi Tango raddoppiati" and gioco == "Tango":
                     punti_per_utente *= 2
                     
-                # Bonus Tuesday: Queens x2
-                if bonus_attivo == "Queens x2" and gioco == "Queens":
+                # Bonus Tuesday: BeTheKing - punteggi Queens raddoppiati
+                if bonus_attivo == "BeTheKing - punteggi Queens raddoppiati" and gioco == "Queens":
                     punti_per_utente *= 2
 
-                # Bonus Wednesday: Zip x2
-                if bonus_attivo == "Zip x2" and gioco == "Zip":
+                # Bonus Wednesday: FastFinger - punteggi Zip raddoppiati
+                if bonus_attivo == "FastFinger - punteggi Zip raddoppiati" and gioco == "Zip":
                     punti_per_utente *= 2
 
                 # Bonus Thursday: tutti i primi posti x2
-                if bonus_attivo == "Primi x2" and pos == 1:
+                if bonus_attivo == "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2" and pos == 1:
                     punti_per_utente *= 2
 
                 # Bonus Friday: tempo sotto soglia
-                soglie_tempo = {"Zip": 8, "Tango": 25, "Queens": 15}
-                if bonus_attivo == "Tempi veloci x2":
+                soglie_tempo = {"Zip": 7, "Tango": 25, "Queens": 15}
+                if bonus_attivo == "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ":
                     tempo_sec = tempo_to_secondi(gruppo[0]['tempo'])
                     if gioco in soglie_tempo and tempo_sec <= soglie_tempo[gioco]:
                         punti_per_utente *= 2
 
                 # Bonus Saturday: ultimi 3 in classifica totale
-                if bonus_attivo == "Ultimi x2":
+                if bonus_attivo == "Gli ultimi saranno i primi - ultimi 3 in classifica x2":
                     classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=False).limit(3).execute().data
                     ultimi_utenti = {r['utente'] for r in classifica}
                     if gruppo[0]['utente'] in ultimi_utenti:
                         punti_per_utente *= 2
 
                 # Bonus Sunday: primi 3 in classifica totale
-                if bonus_attivo == "Top dimezzati":
+                if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
                     classifica = supabase.table("classifica_totale").select("utente, totale").order("totale", desc=True).limit(3).execute().data
                     top_utenti = {r['utente'] for r in classifica}
                     if gruppo[0]['utente'] in top_utenti:
@@ -548,13 +548,13 @@ def annuncia_bonus():
     import random
 
     bonus_possibili = [
-        "Tango x2",
-        "Queens x2",
-        "Zip x2",
-        "Primi x2",
-        "Tempi veloci x2",
-        "Ultimi x2",
-        "Top dimezzati"
+        "TanGOAT - punteggi Tango raddoppiati",
+        "BeTheKing - punteggi Queens raddoppiati",
+        "FastFinger - punteggi Zip raddoppiati",
+        "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
+        "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ",
+        "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
+        "I primi saranno gli ultimi - top 3 in classifica /2"
     ]
 
     random.seed(datetime.now().date().toordinal())  # bonus stabile per il giorno
@@ -569,7 +569,7 @@ def annuncia_bonus():
 
 @webserver.route("/ricorda_giocare", methods=["GET"])
 def ricorda_giocare():
-    updater.bot.send_message(chat_id=-4893176519, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
+    updater.bot.send_message(chat_id=-4893176519, text="⏰ Ricorda di giocare, hai solo altre 3 ore!")
     return "OK"
 
 @webserver.route("/pubblica_auto", methods=["GET"])
