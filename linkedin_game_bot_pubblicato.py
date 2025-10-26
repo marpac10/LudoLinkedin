@@ -358,73 +358,58 @@ def pubblica_classifica(update: Update, context: CallbackContext):
             update.message.reply_text(f"❌ Errore nel calcolo della classifica per {gioco}.")
 
     # BONUS: 1 punto extra per chi ha punti in tutti e 3 i giochi
-    try:
-        # Trova utenti che hanno punti per tutti i giochi
-        utenti_bonus = set(punti_per_utente_per_gioco['Zip'].keys()) & set(punti_per_utente_per_gioco['Queens'].keys()) & set(punti_per_utente_per_gioco['Tango'].keys())
+	try:
+		# Trova utenti che hanno almeno 3 punti in ciascun gioco
+		utenti_zip = {utente for utente, punti in punti_per_utente_per_gioco['Zip'].items() if punti >= 3}
+		utenti_queens = {utente for utente, punti in punti_per_utente_per_gioco['Queens'].items() if punti >= 3}
+		utenti_tango = {utente for utente, punti in punti_per_utente_per_gioco['Tango'].items() if punti >= 3}
 
-        bonus_inserimenti = []
-        for utente in utenti_bonus:
-            # Inserisci il record bonus nella classifica giornaliera
-            bonus_inserimenti.append({
-                "data": oggi,
-                "gioco": "Bonus",
-                "posizione": None,
-                "utente": utente,
-                "tempo": None,
-                "punti": 1
-            })
+		# Intersezione: utenti che hanno almeno 3 punti in tutti e tre i giochi
+		utenti_bonus = utenti_zip & utenti_queens & utenti_tango
 
-            # Aggiorna classifica totale con +1 punto bonus
-            esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente).execute().data
-            if esistente:
-                riga = esistente[0]
-                nuovo_record = {
-                    "utente": utente,
-                    "totale": riga.get("totale", 0) + 1,
-                    "zip": riga.get("zip", 0),
-                    "queens": riga.get("queens", 0),
-                    "tango": riga.get("tango", 0)
-                }
-            else:
-                nuovo_record = {
-                    "utente": utente,
-                    "totale": 1,
-                    "zip": 0,
-                    "queens": 0,
-                    "tango": 0
-                }
-            supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
+		bonus_inserimenti = []
+		for utente in utenti_bonus:
+			# Inserisci il record bonus nella classifica giornaliera
+			bonus_inserimenti.append({
+				"data": oggi,
+				"gioco": "Bonus",
+				"posizione": None,
+				"utente": utente,
+				"tempo": None,
+				"punti": 1
+			})
 
-        if bonus_inserimenti:
-            supabase.table("classifica_giornaliera").insert(bonus_inserimenti).execute()
+			# Aggiorna classifica totale con +1 punto bonus
+			esistente = supabase.table("classifica_totale").select("totale, zip, queens, tango").eq("utente", utente).execute().data
+			if esistente:
+				riga = esistente[0]
+				nuovo_record = {
+					"utente": utente,
+					"totale": riga.get("totale", 0) + 1,
+					"zip": riga.get("zip", 0),
+					"queens": riga.get("queens", 0),
+					"tango": riga.get("tango", 0)
+				}
+			else:
+				nuovo_record = {
+					"utente": utente,
+					"totale": 1,
+					"zip": 0,
+					"queens": 0,
+					"tango": 0
+				}
+			supabase.table("classifica_totale").upsert(nuovo_record, on_conflict=["utente"]).execute()
 
-    except Exception as e:
-        logging.error(f"Errore durante l'assegnazione bonus: {e}")
-        update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
+		if bonus_inserimenti:
+			supabase.table("classifica_giornaliera").insert(bonus_inserimenti).execute()
 
-    update.message.reply_text("✅ Classifiche pubblicate! Bonus punti assegnati ai giocatori completi.")
+	except Exception as e:
+		logging.error(f"Errore durante l'assegnazione bonus: {e}")
+		update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
+
+	update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
 
 
-# def campionato_command(update: Update, context: CallbackContext):
-    # try:
-        # data = supabase.table("classifica_totale")\
-            # .select("utente, totale, zip, queens, tango")\
-            # .order("totale", desc=True)\
-            # .execute().data
-
-        # if not data:
-            # update.message.reply_text("❌ Nessun dato disponibile per il campionato.")
-            # return
-
-        # text = "🏆 Classifica Campionato\n\n"
-        # for i, r in enumerate(data):
-            # text += f"{i+1}. {r['utente']} - {r['totale']} pt (Zip: {r['zip']}, Queens: {r['queens']}, Tango: {r['tango']})\n"
-
-        # update.message.reply_text(text)
-
-    # except Exception as e:
-        # logging.error(f"Errore nel recupero classifica totale: {e}")
-        # update.message.reply_text("❌ Errore nel recupero della classifica totale.")
 
 @admin_only
 def reset_classifica(update: Update, context: CallbackContext):
@@ -521,5 +506,3 @@ def run_flask():
 if __name__ == "__main__":
     threading.Thread(target=run_flask).start()
     main()  # qui parte anche il bot Telegram
-
-
