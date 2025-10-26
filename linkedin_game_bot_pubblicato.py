@@ -275,20 +275,25 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     # Imposta il bonus attivo in base al giorno
     bonus_attivo = None
-    if giorno_settimana == 'Monday':
-        bonus_attivo = "Tango x2"
-    elif giorno_settimana == 'Tuesday':
-        bonus_attivo = "Queens x2"
-    elif giorno_settimana == 'Wednesday':
-        bonus_attivo = "Zip x2"
-    elif giorno_settimana == 'Thursday':
-        bonus_attivo = "Primi x2"
-    elif giorno_settimana == 'Friday':
-        bonus_attivo = "Tempi veloci x2"
-    elif giorno_settimana == 'Saturday':
-        bonus_attivo = "Ultimi x2"
-    elif giorno_settimana == 'Sunday':
-        bonus_attivo = "Top dimezzati"
+    import random
+
+    oggi = datetime.now().date()
+    giorno_settimana = oggi.strftime('%A')  # 'Monday', 'Tuesday', ...
+
+    # Imposta il bonus attivo in modo casuale ma stabile per il giorno
+    bonus_possibili = [
+        "Tango x2",
+        "Queens x2",
+        "Zip x2",
+        "Primi x2",
+        "Tempi veloci x2",
+        "Ultimi x2",
+        "Top dimezzati"
+    ]
+
+    random.seed(oggi.toordinal())  # garantisce che il bonus sia stabile per il giorno
+    bonus_attivo = random.choice(bonus_possibili)
+
 
 
     
@@ -539,23 +544,32 @@ webserver = Flask(__name__)
 
 @webserver.route("/annuncia_bonus", methods=["GET"])
 def annuncia_bonus():
+    from datetime import datetime
+    import random
+
+    bonus_possibili = [
+        "Tango x2",
+        "Queens x2",
+        "Zip x2",
+        "Primi x2",
+        "Tempi veloci x2",
+        "Ultimi x2",
+        "Top dimezzati"
+    ]
+
+    random.seed(datetime.now().date().toordinal())  # bonus stabile per il giorno
+    bonus_attivo = random.choice(bonus_possibili)
+
     giorno = datetime.now().strftime('%A')
-    bonus = {
-        'Monday': "Tango x2",
-        'Tuesday': "Queens x2",
-        'Wednesday': "Zip x2",
-        'Thursday': "Primi x2",
-        'Friday': "Tempi veloci x2",
-        'Saturday': "Ultimi x2",
-        'Sunday': "Top dimezzati"
-    }
-    testo = f"📢 Il bonus di oggi ({giorno}) è: *{bonus[giorno]}*"
-    updater.bot.send_message(chat_id=ID_GRUPPO, text=testo, parse_mode='Markdown')
+    testo = f"🎁 Bonus del giorno ({giorno}): *{bonus_attivo}*\nGioca e approfittane!"
+    updater.bot.send_message(chat_id=-530157185, text=testo, parse_mode='Markdown')
+
     return "OK"
+
 
 @webserver.route("/ricorda_giocare", methods=["GET"])
 def ricorda_giocare():
-    updater.bot.send_message(chat_id=ID_GRUPPO, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
+    updater.bot.send_message(chat_id=530157185, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
     return "OK"
 
 @webserver.route("/pubblica_auto", methods=["GET"])
