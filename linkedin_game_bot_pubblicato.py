@@ -519,7 +519,7 @@ def main():
     dp.add_handler(CommandHandler("reset", reset_classifica, pass_args=True))
     dp.add_handler(CommandHandler("info", info_command))
     dp.add_handler(CallbackQueryHandler(mostra_classifica))
-	dp.add_handler(CommandHandler("getid", get_chat_id))
+    dp.add_handler(CommandHandler("getid", get_chat_id))
     dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
     updater.start_webhook(
@@ -535,6 +535,35 @@ def main():
 
 webserver = Flask(__name__)
 
+
+
+@webserver.route("/annuncia_bonus", methods=["GET"])
+def annuncia_bonus():
+    giorno = datetime.now().strftime('%A')
+    bonus = {
+        'Monday': "Tango x2",
+        'Tuesday': "Queens x2",
+        'Wednesday': "Zip x2",
+        'Thursday': "Primi x2",
+        'Friday': "Tempi veloci x2",
+        'Saturday': "Ultimi x2",
+        'Sunday': "Top dimezzati"
+    }
+    testo = f"📢 Il bonus di oggi ({giorno}) è: *{bonus[giorno]}*"
+    updater.bot.send_message(chat_id=ID_GRUPPO, text=testo, parse_mode='Markdown')
+    return "OK"
+
+@webserver.route("/ricorda_giocare", methods=["GET"])
+def ricorda_giocare():
+    updater.bot.send_message(chat_id=ID_GRUPPO, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
+    return "OK"
+
+@webserver.route("/pubblica_auto", methods=["GET"])
+def pubblica_auto():
+    fake_update = Update(update_id=0, message=None)
+    context = CallbackContext(dispatcher=dp)
+    pubblica_classifica(fake_update, context)
+    return "OK"
 
 
 
