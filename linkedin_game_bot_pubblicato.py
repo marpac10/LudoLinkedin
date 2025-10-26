@@ -562,14 +562,14 @@ def annuncia_bonus():
 
     giorno = datetime.now().strftime('%A')
     testo = f"🎁 Bonus del giorno ({giorno}): *{bonus_attivo}*\nGioca e approfittane!"
-    updater.bot.send_message(chat_id=-530157185, text=testo, parse_mode='Markdown')
+    updater.bot.send_message(chat_id=-4893176519, text=testo, parse_mode='Markdown')
 
     return "OK"
 
 
 @webserver.route("/ricorda_giocare", methods=["GET"])
 def ricorda_giocare():
-    updater.bot.send_message(chat_id=530157185, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
+    updater.bot.send_message(chat_id=-4893176519, text="⏰ Ricorda di giocare oggi a Zip, Queens e Tango!")
     return "OK"
 
 @webserver.route("/pubblica_auto", methods=["GET"])
