@@ -638,12 +638,12 @@ def pubblica_auto():
             punti_str = ", ".join(punti_testo)
             text += f"{i+1}. {user} - {r['totale']} pt ({punti_str})\n"
 
-        updater.bot.send_message(chat_id=-4893176519, text=text)
+        updater.bot.send_message(chat_id=-1003276752021, text=text)
         return "OK"
 
     except Exception as e:
         logging.error(f"Errore nel recupero classifica campionato_oggi: {e}")
-        updater.bot.send_message(chat_id=-4893176519, text="❌ Errore nel recupero della classifica.")
+        updater.bot.send_message(chat_id=-1003276752021, text="❌ Errore nel recupero della classifica.")
         return "OK"
 
 
