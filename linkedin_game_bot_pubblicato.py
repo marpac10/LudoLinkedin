@@ -279,6 +279,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     oggi = datetime.now().date()
     giorno_settimana = oggi.strftime('%A')  # 'Monday', 'Tuesday', ...
+	oggi_str = oggi.isoformat()
 
     # Imposta il bonus attivo in modo casuale ma stabile per il giorno
     bonus_possibili = [
@@ -299,7 +300,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
     
     check_pubblicata = supabase.table("classifica_giornaliera")\
         .select("id")\
-        .eq("data", oggi)\
+        .eq("data", oggi_str)\
         .limit(1)\
         .execute().data
 
@@ -324,8 +325,8 @@ def pubblica_classifica(update: Update, context: CallbackContext):
             risultati = supabase.table("risultati_giornalieri")\
                 .select("utente, tempo")\
                 .eq("gioco", gioco)\
-                .gte("timestamp", oggi.isoformat() + "T00:00:00Z")\
-                .lte("timestamp", oggi.isoformat() + "T23:59:59Z")\
+                .gte("timestamp", oggi_str + "T00:00:00Z")\
+                .lte("timestamp", oggi_str + "T23:59:59Z")\
                 .execute().data
 
             if not risultati:
@@ -401,7 +402,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                 for utente in gruppo:
                     utenti_punteggi.append({
-                        "data": oggi,
+                        "data": oggi_str,
                         "gioco": gioco,
                         "posizione": pos,
                         "utente": utente['utente'],
