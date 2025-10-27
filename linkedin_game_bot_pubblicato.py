@@ -494,7 +494,8 @@ def pubblica_classifica(update: Update, context: CallbackContext):
         logging.error(f"Errore durante l'assegnazione bonus: {e}")
         update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
 
-    update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
+    if update.message:
+	    update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
 
 
 
