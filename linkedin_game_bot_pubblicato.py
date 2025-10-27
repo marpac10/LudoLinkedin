@@ -287,7 +287,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
         "BeTheKing - punteggi Queens raddoppiati",
         "FastFinger - punteggi Zip raddoppiati",
         "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
-        "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ",
+        "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
         "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
         "I primi saranno gli ultimi - top 3 in classifica /2"
     ]
@@ -366,8 +366,8 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                     punti_per_utente *= 2
 
                 # Bonus Friday: tempo sotto soglia
-                soglie_tempo = {"Zip": 7, "Tango": 25, "Queens": 15}
-                if bonus_attivo == "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ":
+                soglie_tempo = {"Zip": 5, "Tango": 20, "Queens": 10}
+                if bonus_attivo == "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ":
                     tempo_sec = tempo_to_secondi(gruppo[0]['tempo'])
                     if gioco in soglie_tempo and tempo_sec <= soglie_tempo[gioco]:
                         punti_per_utente *= 2
@@ -458,7 +458,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
         for utente in utenti_bonus:
             # Inserisci il record bonus nella classifica giornaliera
             bonus_inserimenti.append({
-                "data": oggi,
+                "data": oggi_str,
                 "gioco": "Bonus",
                 "posizione": None,
                 "utente": utente,
@@ -570,7 +570,7 @@ def annuncia_bonus():
         "BeTheKing - punteggi Queens raddoppiati",
         "FastFinger - punteggi Zip raddoppiati",
         "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
-        "ThresholdGame - se sei sotto la soglia x2 (zip 7s, queens 15s, tango 25s) ",
+        "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
         "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
         "I primi saranno gli ultimi - top 3 in classifica /2"
     ]
