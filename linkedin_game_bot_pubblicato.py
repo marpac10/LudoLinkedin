@@ -279,7 +279,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     oggi = datetime.now().date()
     giorno_settimana = oggi.strftime('%A')  # 'Monday', 'Tuesday', ...
-	oggi_str = oggi.isoformat()
+    oggi_str = oggi.isoformat()
 
     # Imposta il bonus attivo in modo casuale ma stabile per il giorno
     bonus_possibili = [
