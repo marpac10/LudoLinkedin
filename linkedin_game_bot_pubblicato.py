@@ -324,8 +324,8 @@ def pubblica_classifica(update: Update, context: CallbackContext):
             risultati = supabase.table("risultati_giornalieri")\
                 .select("utente, tempo")\
                 .eq("gioco", gioco)\
-                .gte("timestamp", oggi + "T00:00:00Z")\
-                .lte("timestamp", oggi + "T23:59:59Z")\
+                .gte("timestamp", oggi.isoformat() + "T00:00:00Z")\
+                .lte("timestamp", oggi.isoformat() + "T23:59:59Z")\
                 .execute().data
 
             if not risultati:
