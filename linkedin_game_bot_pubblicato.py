@@ -581,14 +581,14 @@ def annuncia_bonus():
 
     giorno = datetime.now().strftime('%A')
     testo = f"🎁 Bonus del giorno ({giorno}): *{bonus_attivo}*\nGioca e approfittane!"
-    updater.bot.send_message(chat_id=-4893176519, text=testo, parse_mode='Markdown')
+    updater.bot.send_message(chat_id=-1003276752021, text=testo, parse_mode='Markdown')
 
     return "OK"
 
 
 @webserver.route("/ricorda_giocare", methods=["GET"])
 def ricorda_giocare():
-    updater.bot.send_message(chat_id=-4893176519, text="⏰ Ricorda di giocare, hai solo altre 3 ore!")
+    updater.bot.send_message(chat_id=-1003276752021, text="⏰ Ricorda di giocare, hai solo altre 3 ore!")
     return "OK"
 
 @webserver.route("/pubblica_auto", methods=["GET"])
@@ -611,7 +611,7 @@ def pubblica_auto():
             .execute().data
 
         if not data:
-            updater.bot.send_message(chat_id=-4893176519, text="❌ Nessun dato disponibile per il campionato.")
+            updater.bot.send_message(chat_id=-1003276752021, text="❌ Nessun dato disponibile per il campionato.")
             return "OK"
 
         # Punti odierni
