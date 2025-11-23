@@ -434,7 +434,38 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                 
                 if bonus_attivo.startswith("Sconfiggi il tuo rivale!"):
-                    applica_bonus_rivali(oggi_str)
+                
+                    # Recupera i duelli del giorno
+                    duelli = supabase.table("duelli_giornalieri")\
+                        .select("utente_a, utente_b")\
+                        .eq("data", oggi_str)\
+                        .execute().data
+
+                    # Trova se l'utente è in un duello
+                    for d in duelli:
+                        a, b = d['utente_a'], d['utente_b']
+                        if utente['utente'] in (a, b):
+                            # Calcola punti dell'altro
+                            altro = b if utente['utente'] == a else a
+                            punti_altro = sum(r['punti'] for r in supabase.table("classifica_giornaliera")
+                                            .select("punti").eq("utente", altro).eq("data", oggi_str).execute().data)
+
+                            # Totale classifica per confronto
+                            totale_a = supabase.table("classifica_totale").select("totale").eq("utente", a).execute().data[0]['totale']
+                            totale_b = supabase.table("classifica_totale").select("totale").eq("utente", b).execute().data[0]['totale']
+
+                            # Determina chi era avanti
+                            if totale_a > totale_b:
+                                avanti, dietro = a, b
+                            else:
+                                avanti, dietro = b, a
+
+                            # Se il dietro vince → ruba i punti dell’avanti
+                            if utente['utente'] == dietro and punti_per_utente > punti_altro:
+                                punti_per_utente += punti_altro
+                            elif utente['utente'] == avanti and punti_per_utente < punti_altro:
+                                punti_per_utente = 0
+
 
                 
                 
