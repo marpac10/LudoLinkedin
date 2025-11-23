@@ -444,9 +444,9 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                     # Trova se l'utente è in un duello
                     for d in duelli:
                         a, b = d['utente_a'], d['utente_b']
-                        if utente['utente'] in (a, b):
+                        if gruppo[0]['utente'] in (a, b):
                             # Calcola punti dell'altro
-                            altro = b if utente['utente'] == a else a
+                            altro = b if gruppo[0]['utente'] == a else a
                             punti_altro = sum(r['punti'] for r in supabase.table("classifica_giornaliera")
                                             .select("punti").eq("utente", altro).eq("data", oggi_str).execute().data)
 
@@ -461,9 +461,9 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                                 avanti, dietro = b, a
 
                             # Se il dietro vince → ruba i punti dell’avanti
-                            if utente['utente'] == dietro and punti_per_utente > punti_altro:
+                            if gruppo[0]['utente'] == dietro and punti_per_utente > punti_altro:
                                 punti_per_utente += punti_altro
-                            elif utente['utente'] == avanti and punti_per_utente < punti_altro:
+                            elif gruppo[0]['utente'] == avanti and punti_per_utente < punti_altro:
                                 punti_per_utente = 0
 
 
