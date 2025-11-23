@@ -668,7 +668,7 @@ def annuncia_bonus():
 
         # Salvi i duelli su Supabase per usarli a fine giornata
         records = []
-        oggi = datetime.now().date().isoformat()
+        oggi = datetime.now().date()
         for a, b in duelli:
             records.append({"data": oggi.isoformat(), "utente_a": a, "utente_b": b})
         if escluso:
