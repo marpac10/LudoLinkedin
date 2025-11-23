@@ -462,7 +462,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
                             # Se il dietro vince → ruba i punti dell’avanti
                             if gruppo[0]['utente'] == dietro and punti_per_utente > punti_altro:
-                                punti_per_utente += punti_altro
+                                punti_per_utente = punti_per_utente*2
                             elif gruppo[0]['utente'] == avanti and punti_per_utente < punti_altro:
                                 punti_per_utente = 0
 
