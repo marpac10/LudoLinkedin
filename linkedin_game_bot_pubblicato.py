@@ -585,6 +585,7 @@ def genera_duelli_random():
         .order("totale", desc=True)\
         .execute().data
 
+    import random
     utenti = [r['utente'] for r in data]
     random.shuffle(utenti)
 
@@ -667,6 +668,7 @@ def annuncia_bonus():
 
         # Salvi i duelli su Supabase per usarli a fine giornata
         records = []
+        oggi = datetime.now().date().isoformat()
         for a, b in duelli:
             records.append({"data": oggi.isoformat(), "utente_a": a, "utente_b": b})
         if escluso:
