@@ -266,6 +266,53 @@ def mostra_classifica(update: Update, context: CallbackContext):
         query.edit_message_text("❌ Errore nel recupero classifica.")
 
 
+def applica_bonus_rivali(oggi_str):
+    duelli = supabase.table("duelli_giornalieri")\
+        .select("utente_a, utente_b")\
+        .eq("data", oggi_str)\
+        .execute().data
+
+    for d in duelli:
+        a, b = d['utente_a'], d['utente_b']
+        if not b:  # escluso
+            continue
+
+        # Punti giornalieri
+        punti_a = sum(r['punti'] for r in supabase.table("classifica_giornaliera")
+                      .select("punti").eq("utente", a).eq("data", oggi_str).execute().data)
+        punti_b = sum(r['punti'] for r in supabase.table("classifica_giornaliera")
+                      .select("punti").eq("utente", b).eq("data", oggi_str).execute().data)
+
+        # Totale classifica
+        totale_a = supabase.table("classifica_totale").select("totale").eq("utente", a).execute().data[0]['totale']
+        totale_b = supabase.table("classifica_totale").select("totale").eq("utente", b).execute().data[0]['totale']
+
+        # Determina chi era avanti
+        if totale_a > totale_b:
+            avanti, dietro = a, b
+            punti_avanti, punti_dietro = punti_a, punti_b
+            totale_avanti, totale_dietro = totale_a, totale_b
+        else:
+            avanti, dietro = b, a
+            punti_avanti, punti_dietro = punti_b, punti_a
+            totale_avanti, totale_dietro = totale_b, totale_a
+
+        # Se il dietro vince → ruba i punti dell’avanti
+        if punti_dietro > punti_avanti:
+            supabase.table("classifica_totale").update({"totale": totale_dietro + punti_avanti})\
+                .eq("utente", dietro).execute()
+            supabase.table("classifica_totale").update({"totale": totale_avanti - punti_avanti})\
+                .eq("utente", avanti).execute()
+
+            # Aggiorna anche la classifica giornaliera
+            supabase.table("classifica_giornaliera").update({"punti": 0})\
+                .eq("utente", avanti).eq("data", oggi_str).execute()
+            supabase.table("classifica_giornaliera").update({"punti": punti_avanti + punti_dietro})\
+                .eq("utente", dietro).eq("data", oggi_str).execute()
+
+
+
+
 def pubblica_classifica(update: Update, context: CallbackContext):
     from datetime import datetime
     global classifica_pubblicata
@@ -384,7 +431,13 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                         if gruppo[0]['utente'] in ultimi_utenti:
                             punti_per_utente *= 2
 
-                # Bonus Sunday: primi 3 in classifica totale
+                
+				if bonus_attivo.startswith("Sconfiggi il tuo rivale!"):
+                    applica_bonus_rivali(oggi_str)
+
+				
+				
+				# Bonus Sunday: primi 3 in classifica totale
                 if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
                     classifica = supabase.table("classifica_totale")\
                         .select("utente, totale")\
@@ -525,6 +578,26 @@ def is_orario_attivo():
     ora = datetime.now().hour
     return 8 <= ora < 22  # attivo solo tra le 8:00 e le 19:59
 
+def genera_duelli_random():
+    data = supabase.table("classifica_totale")\
+        .select("utente, totale")\
+        .order("totale", desc=True)\
+        .execute().data
+
+    utenti = [r['utente'] for r in data]
+    random.shuffle(utenti)
+
+    duelli = []
+    escluso = None
+
+    if len(utenti) % 2 == 1:
+        escluso = utenti.pop()  # uno escluso random
+
+    for i in range(0, len(utenti), 2):
+        duelli.append((utenti[i], utenti[i+1]))
+
+    return duelli, escluso
+
 
 def get_chat_id(update: Update, context: CallbackContext):
     chat_id = update.effective_chat.id
@@ -573,7 +646,8 @@ def annuncia_bonus():
         "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
         "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
         "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
-        "I primi saranno gli ultimi - top 3 in classifica /2"
+        "I primi saranno gli ultimi - top 3 in classifica /2",
+		"Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri"
     ]
 
     random.seed(datetime.now().date().toordinal())  # bonus stabile per il giorno
@@ -581,9 +655,27 @@ def annuncia_bonus():
 
     giorno = datetime.now().strftime('%A')
     testo = f"🎁 Bonus del giorno ({giorno}): *{bonus_attivo}*\nGioca e approfittane!"
-    updater.bot.send_message(chat_id=-1003276752021, text=testo, parse_mode='Markdown')
+    
+	if "Sconfiggi il tuo rivale!" in bonus_attivo:
+        duelli, escluso = genera_duelli_random()
+        testo += "\n⚔️ Duelli del giorno:\n"
+        for a, b in duelli:
+            testo += f"- {a} vs {b}\n"
+        if escluso:
+            testo += f"(🎲 {escluso} escluso oggi)\n"
 
-    return "OK"
+        # Salvi i duelli su Supabase per usarli a fine giornata
+        records = []
+        for a, b in duelli:
+            records.append({"data": oggi.isoformat(), "utente_a": a, "utente_b": b})
+        if escluso:
+            records.append({"data": oggi.isoformat(), "utente_a": escluso, "utente_b": None})
+        supabase.table("duelli_giornalieri").insert(records).execute()
+	
+	
+	updater.bot.send_message(chat_id=-1003276752021, text=testo, parse_mode='Markdown')
+
+    return bonus_attivo
 
 
 @webserver.route("/ricorda_giocare", methods=["GET"])
