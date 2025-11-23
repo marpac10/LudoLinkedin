@@ -432,12 +432,12 @@ def pubblica_classifica(update: Update, context: CallbackContext):
                             punti_per_utente *= 2
 
                 
-				if bonus_attivo.startswith("Sconfiggi il tuo rivale!"):
+                if bonus_attivo.startswith("Sconfiggi il tuo rivale!"):
                     applica_bonus_rivali(oggi_str)
 
-				
-				
-				# Bonus Sunday: primi 3 in classifica totale
+                
+                
+                # Bonus Sunday: primi 3 in classifica totale
                 if bonus_attivo == "I primi saranno gli ultimi - top 3 in classifica /2":
                     classifica = supabase.table("classifica_totale")\
                         .select("utente, totale")\
@@ -548,7 +548,7 @@ def pubblica_classifica(update: Update, context: CallbackContext):
         update.message.reply_text("❌ Errore durante l'assegnazione del bonus extra.")
 
     if update.message:
-	    update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
+        update.message.reply_text("✅ Classifiche pubblicate! Bonus assegnati solo ai top 3 di ogni gioco.")
 
 
 
@@ -647,7 +647,7 @@ def annuncia_bonus():
         "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
         "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
         "I primi saranno gli ultimi - top 3 in classifica /2",
-		"Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri"
+        "Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri"
     ]
 
     random.seed(datetime.now().date().toordinal())  # bonus stabile per il giorno
@@ -656,7 +656,7 @@ def annuncia_bonus():
     giorno = datetime.now().strftime('%A')
     testo = f"🎁 Bonus del giorno ({giorno}): *{bonus_attivo}*\nGioca e approfittane!"
     
-	if "Sconfiggi il tuo rivale!" in bonus_attivo:
+    if "Sconfiggi il tuo rivale!" in bonus_attivo:
         duelli, escluso = genera_duelli_random()
         testo += "\n⚔️ Duelli del giorno:\n"
         for a, b in duelli:
@@ -671,9 +671,9 @@ def annuncia_bonus():
         if escluso:
             records.append({"data": oggi.isoformat(), "utente_a": escluso, "utente_b": None})
         supabase.table("duelli_giornalieri").insert(records).execute()
-	
-	
-	updater.bot.send_message(chat_id=-1003276752021, text=testo, parse_mode='Markdown')
+    
+    
+    updater.bot.send_message(chat_id=-1003276752021, text=testo, parse_mode='Markdown')
 
     return bonus_attivo
 
