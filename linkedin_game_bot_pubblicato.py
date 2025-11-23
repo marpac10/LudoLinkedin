@@ -330,13 +330,14 @@ def pubblica_classifica(update: Update, context: CallbackContext):
 
     # Imposta il bonus attivo in modo casuale ma stabile per il giorno
     bonus_possibili = [
-        "TanGOAT - punteggi Tango raddoppiati",
-        "BeTheKing - punteggi Queens raddoppiati",
-        "FastFinger - punteggi Zip raddoppiati",
-        "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
-        "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
-        "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
-        "I primi saranno gli ultimi - top 3 in classifica /2"
+     #   "TanGOAT - punteggi Tango raddoppiati",
+     #   "BeTheKing - punteggi Queens raddoppiati",
+     #   "FastFinger - punteggi Zip raddoppiati",
+     #   "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
+     #   "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
+     #   "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
+     #   "I primi saranno gli ultimi - top 3 in classifica /2",
+        "Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri""Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri"
     ]
 
     random.seed(oggi.toordinal())  # garantisce che il bonus sia stabile per il giorno
@@ -640,13 +641,13 @@ def annuncia_bonus():
     import random
 
     bonus_possibili = [
-        "TanGOAT - punteggi Tango raddoppiati",
-        "BeTheKing - punteggi Queens raddoppiati",
-        "FastFinger - punteggi Zip raddoppiati",
-        "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
-        "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
-        "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
-        "I primi saranno gli ultimi - top 3 in classifica /2",
+      #  "TanGOAT - punteggi Tango raddoppiati",
+      #  "BeTheKing - punteggi Queens raddoppiati",
+      #  "FastFinger - punteggi Zip raddoppiati",
+      #  "Il secondo è solo il primo dei perdenti - primi di ogni gioco x2",
+      #  "ThresholdGame - se sei sotto la soglia x2 (zip 5s, queens 10s, tango 20s)   ",
+      #  "Gli ultimi saranno i primi - ultimi 3 in classifica x2",
+      #  "I primi saranno gli ultimi - top 3 in classifica /2",
         "Sconfiggi il tuo rivale! - Se batti chi ti sta avanti rubi i suoi punti giornalieri"
     ]
 
